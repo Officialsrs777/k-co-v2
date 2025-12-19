@@ -33,11 +33,11 @@ const RegionPieChart = ({ data, limit = 8, onLimitChange }) => {
         )}
       </div>
 
-      <div className="flex-1 w-full min-h-0 flex flex-col lg:flex-row items-start gap-4">
+      <div className="flex-1 w-full min-h-0 flex flex-col gap-4">
         {/* Pie Chart */}
-        <div className="flex-1 w-full flex items-center justify-center" style={{ minHeight: '320px', height: '320px' }}>
+        <div className="flex-1 w-full flex items-center justify-center" style={{ minHeight: '320px', height: '320px', padding: '20px', overflow: 'visible' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <PieChart margin={{ top: 30, right: 40, bottom: 30, left: 40 }}>
+            <PieChart margin={{ top: 50, right: 50, bottom: 50, left: 50 }}>
               <Pie
                 data={data}
                 cx="50%"
@@ -56,14 +56,20 @@ const RegionPieChart = ({ data, limit = 8, onLimitChange }) => {
                       fill="white"
                       textAnchor={x > cx ? 'start' : 'end'}
                       dominantBaseline="central"
-                      fontSize="9"
-                      fontWeight="400"
+                      fontSize="11"
+                      fontWeight="600"
+                      style={{
+                        textShadow: '0 0 8px rgba(255,255,255,0.8), 0 0 12px rgba(160,47,241,0.6), 0 0 16px rgba(160,47,241,0.4)',
+                        textRendering: 'geometricPrecision',
+                        WebkitFontSmoothing: 'antialiased',
+                        MozOsxFontSmoothing: 'grayscale'
+                      }}
                     >
                       {`${(percent * 100).toFixed(0)}%`}
                     </text>
                   );
                 }}
-                outerRadius={95}
+                outerRadius={100}
                 fill="#8884d8"
                 dataKey="value"
               >
@@ -79,19 +85,20 @@ const RegionPieChart = ({ data, limit = 8, onLimitChange }) => {
             </PieChart>
           </ResponsiveContainer>
         </div>
-        {/* Custom Legend that wraps properly */}
-        <div className="flex-shrink-0 w-full lg:w-auto lg:max-w-[220px] lg:pr-2">
-          <div className="flex flex-wrap gap-2 lg:flex-col lg:gap-2">
+        
+        {/* Legend at Bottom - Horizontal Grid */}
+        <div className="w-full pt-2 border-t border-white/5">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {data.map((entry, index) => (
-              <div key={`legend-${index}`} className="flex items-center gap-2 text-[10px] min-w-0">
+              <div key={`legend-${index}`} className="flex items-center gap-2 text-[10px]">
                 <div 
                   className="w-3 h-3 rounded-sm flex-shrink-0" 
                   style={{ backgroundColor: COLORS[index % COLORS.length] }}
                 />
-                <span className="text-gray-300 truncate flex-1" title={entry.name}>
+                <span className="text-gray-300 truncate" title={entry.name}>
                   {entry.name}
                 </span>
-                <span className="text-gray-500 flex-shrink-0">
+                <span className="text-gray-500 flex-shrink-0 ml-auto">
                   {formatCurrency(entry.value)}
                 </span>
               </div>

@@ -1,6 +1,6 @@
 // src/components/dashboard/FilterBar.jsx
 import React from 'react';
-import { Filter, RefreshCw, ChevronDown, BarChart2 } from 'lucide-react';
+import { Filter, RefreshCw, ChevronDown, BarChart2, Cloud, Settings, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const FilterBar = ({ data, filters, onChange, groupBy, onGroupChange }) => {
@@ -11,21 +11,29 @@ const FilterBar = ({ data, filters, onChange, groupBy, onGroupChange }) => {
     return ['All', ...unique.sort()];
   };
 
-  const Select = ({ label, field }) => (
-    <div className="relative group">
-      <select
-        value={filters[field]}
-        onChange={(e) => onChange(prev => ({ ...prev, [field]: e.target.value }))}
-        className="appearance-none bg-[#0f0f11] border border-white/10 hover:border-[#a02ff1]/50 rounded-lg pl-3 pr-8 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#a02ff1]/50 focus:shadow-[0_0_15px_rgba(160,47,241,0.4)] transition-all min-w-[140px] cursor-pointer text-gray-300"
-        style={{
-          colorScheme: 'dark'
-        }}
-      >
-        {getOptions(label).map(opt => (
-          <option key={opt} value={opt} style={{ backgroundColor: '#0f0f11', color: '#d1d5db' }}>{opt}</option>
-        ))}
-      </select>
-      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
+  const Select = ({ label, field, displayLabel, icon: Icon, iconColor }) => (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2">
+        {Icon && <Icon size={14} className={iconColor || "text-gray-500"} />}
+        <label className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">
+          {displayLabel}
+        </label>
+      </div>
+      <div className="relative group">
+        <select
+          value={filters[field]}
+          onChange={(e) => onChange(prev => ({ ...prev, [field]: e.target.value }))}
+          className="appearance-none bg-[#0f0f11] border border-white/10 hover:border-[#a02ff1]/50 rounded-lg pl-3 pr-8 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#a02ff1]/50 focus:shadow-[0_0_15px_rgba(160,47,241,0.4)] transition-all min-w-[140px] cursor-pointer text-gray-300"
+          style={{
+            colorScheme: 'dark'
+          }}
+        >
+          {getOptions(label).map(opt => (
+            <option key={opt} value={opt} style={{ backgroundColor: '#0f0f11', color: '#d1d5db' }}>{opt}</option>
+          ))}
+        </select>
+        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-500" />
+      </div>
     </div>
   );
 
@@ -48,17 +56,21 @@ const FilterBar = ({ data, filters, onChange, groupBy, onGroupChange }) => {
         <Filter size={16} className="text-[#a02ff1]" /> Filters
       </div>
       
-      <Select label="ProviderName" field="provider" />
-      <Select label="ServiceName" field="service" />
-      <Select label="RegionName" field="region" />
+      <Select label="ProviderName" field="provider" displayLabel="Provider" icon={Cloud} iconColor="text-cyan-400" />
+      <Select label="ServiceName" field="service" displayLabel="Service" icon={Settings} iconColor="text-[#a02ff1]" />
+      <Select label="RegionName" field="region" displayLabel="Region" icon={MapPin} iconColor="text-green-400" />
 
       {/* Divider */}
       <div className="w-px h-8 bg-white/10 mx-2 hidden md:block"></div>
 
       {/* Group By Selector */}
-      <div className="flex items-center gap-2">
-         <BarChart2 size={16} className="text-blue-400" />
-         <span className="text-xs text-gray-400 font-medium">Group By:</span>
+      <div className="flex flex-col gap-1.5">
+         <div className="flex items-center gap-2">
+           <BarChart2 size={14} className="text-blue-400" />
+           <label className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">
+             Group By
+           </label>
+         </div>
          <div className="relative group">
             <select
                 value={groupBy}

@@ -164,7 +164,7 @@ const Hero = ({ onOpenAuth }) => {
                  <div className="w-3 h-3 rounded-full bg-yellow-500/20 border border-yellow-500/50"></div>
                  <div className="w-3 h-3 rounded-full bg-green-500/20 border border-green-500/50"></div>
                </div>
-               <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">FinOps OS v2.4</div>
+               <div className="text-[10px] font-mono text-gray-500 uppercase tracking-widest">FinOps OS v1.4</div>
             </div>
 
             {/* Dashboard Body */}

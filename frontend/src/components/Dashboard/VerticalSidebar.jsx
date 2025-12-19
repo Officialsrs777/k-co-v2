@@ -3,7 +3,7 @@ import React, { useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { 
   BarChart3, TrendingUp, Gauge, Users, Boxes, 
-  Sparkles, ShieldAlert, FileText, Upload as UploadIcon,
+  Sparkles, ShieldAlert, Table, Upload as UploadIcon,
   Play, FileBarChart
 } from 'lucide-react';
 
@@ -39,14 +39,19 @@ const VerticalSidebar = ({ onCsvSelected }) => {
   // Note: Preserving '/dashboard' prefix to ensure compatibility with existing Router
   const navigationGroups = [
     {
-      title: 'ANALYTICS',
+      title: 'DASHBOARD',
       items: [
         { to: '/dashboard', label: 'Overview', icon: BarChart3, end: true },
+        { to: '/dashboard/data-explorer', label: 'Data Explorer', icon: Table },
+      ]
+    },
+    {
+      title: 'ANALYTICS',
+      items: [
         { to: '/dashboard/cost-analysis', label: 'Cost Analysis', icon: TrendingUp },
         { to: '/dashboard/cost-drivers', label: 'Cost Drivers', icon: Gauge },
         { to: '/dashboard/resources', label: 'Resources', icon: Boxes },
         { to: '/dashboard/data-quality', label: 'Data Quality', icon: ShieldAlert },
-        { to: '/dashboard/data-explorer', label: 'Data Explorer', icon: FileText },
       ]
     },
     {

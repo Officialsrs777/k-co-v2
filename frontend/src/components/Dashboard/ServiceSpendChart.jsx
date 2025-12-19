@@ -7,9 +7,12 @@ const COLORS = ['#a02ff1', '#60a5fa', '#34d399', '#f87171', '#fbbf24'];
 const ServiceSpendChart = ({ data, title, limit = 8, onLimitChange }) => { 
   const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
+  // Calculate dynamic height based on number of items
+  const chartHeight = Math.max(400, data.length * 35 + 100);
+
   return (
-    // Compact Container: rounded-2xl, p-5, min-h-[300px]
-    <div className="bg-[#1a1b20]/60 backdrop-blur-md border border-white/5 rounded-2xl p-5 flex flex-col shadow-xl min-h-[300px]">
+    // Compact Container: rounded-2xl, p-5, dynamic height
+    <div className="bg-[#1a1b20]/60 backdrop-blur-md border border-white/5 rounded-2xl p-5 flex flex-col shadow-xl" style={{ minHeight: `${chartHeight}px` }}>
       
       {/* Dynamic Header */}
       <div className="mb-4 flex justify-between items-center h-8">
@@ -36,15 +39,15 @@ const ServiceSpendChart = ({ data, title, limit = 8, onLimitChange }) => {
          )}
       </div>
 
-      <div className="flex-1 w-full min-h-0">
+      <div className="flex-1 w-full min-h-0" style={{ height: `${chartHeight - 80}px` }}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ left: 0, right: 5, top: 5, bottom: 5 }}>
+          <BarChart data={data} layout="vertical" margin={{ left: 0, right: 20, top: 10, bottom: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
             
             <XAxis 
               type="number" 
               stroke="#6b7280" 
-              fontSize={10} 
+              fontSize={11} 
               tickFormatter={(val) => {
                 if (val >= 1000) return `$${(val/1000).toFixed(1)}k`;
                 return `$${val}`;
@@ -57,16 +60,16 @@ const ServiceSpendChart = ({ data, title, limit = 8, onLimitChange }) => {
             <YAxis 
               dataKey="name" 
               type="category" 
-              width={130}
+              width={150}
               stroke="#9ca3af" 
-              fontSize={9} 
-              tick={{fill: '#9ca3af'}} 
+              fontSize={10} 
+              tick={{fill: '#d1d5db'}} 
               axisLine={false} 
               tickLine={false}
               tickFormatter={(value) => {
-                // Truncate long names
-                if (value.length > 18) {
-                  return value.substring(0, 15) + '...';
+                // Truncate long names with better length
+                if (value.length > 22) {
+                  return value.substring(0, 20) + '...';
                 }
                 return value;
               }}
@@ -79,7 +82,7 @@ const ServiceSpendChart = ({ data, title, limit = 8, onLimitChange }) => {
               formatter={(value) => formatCurrency(value)} 
             />
             
-            <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={25}>
+            <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={30}>
               {data.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}

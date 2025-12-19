@@ -106,6 +106,64 @@ const DashboardPage = () => {
       .sort((a, b) => b.value - a.value)
       .slice(0, chartFilters.pieChart.limit); // Top N regions (configurable)
 
+    // Calculate anomalies - items with unusually high costs (2 standard deviations above mean)
+    const costs = filtered.map(item => parseFloat(item.BilledCost) || 0);
+    const avg = costs.length > 0 ? costs.reduce((a, b) => a + b, 0) / costs.length : 0;
+    const variance = costs.length > 0 ? costs.reduce((sum, cost) => sum + Math.pow(cost - avg, 2), 0) / costs.length : 0;
+    const stdDev = Math.sqrt(variance);
+    const threshold = avg + (2 * stdDev);
+    const anomalies = filtered
+      .map((item, index) => ({
+        ...item,
+        cost: parseFloat(item.BilledCost) || 0,
+        index
+      }))
+      .filter(item => item.cost > threshold)
+      .sort((a, b) => b.cost - a.cost)
+      .slice(0, 10); // Top 10 anomalies for insights
+
+    // 4. NEW KPI METRICS
+    
+    // 4a. Spend Change (%) - Compare current period vs previous comparable period
+    // Split data by date into two halves for comparison
+    const sortedByDate = [...filtered].sort((a, b) => {
+      const dateA = a.ChargePeriodStart ? new Date(a.ChargePeriodStart.split(' ')[0]) : new Date(0);
+      const dateB = b.ChargePeriodStart ? new Date(b.ChargePeriodStart.split(' ')[0]) : new Date(0);
+      return dateA - dateB;
+    });
+    const midPoint = Math.floor(sortedByDate.length / 2);
+    const previousPeriodSpend = sortedByDate.slice(0, midPoint).reduce((acc, curr) => acc + (parseFloat(curr.BilledCost) || 0), 0);
+    const currentPeriodSpend = sortedByDate.slice(midPoint).reduce((acc, curr) => acc + (parseFloat(curr.BilledCost) || 0), 0);
+    const spendChangePercent = previousPeriodSpend > 0 
+      ? ((currentPeriodSpend - previousPeriodSpend) / previousPeriodSpend) * 100 
+      : 0;
+
+    // 4b. Top Cloud Provider - ProviderName with highest SUM(BilledCost)
+    const providerMap = {};
+    filtered.forEach(item => {
+      const provider = item.ProviderName || 'Unknown';
+      providerMap[provider] = (providerMap[provider] || 0) + (parseFloat(item.BilledCost) || 0);
+    });
+    const topProvider = Object.entries(providerMap).sort((a, b) => b[1] - a[1])[0];
+
+    // 4c. Untagged Cost Impact - SUM(BilledCost WHERE Tags IS NULL or empty)
+    const untaggedCost = filtered
+      .filter(item => {
+        const tags = item.Tags || item.Tag || '';
+        return !tags || tags.trim() === '' || tags.toLowerCase() === 'null' || tags.toLowerCase() === 'none';
+      })
+      .reduce((acc, curr) => acc + (parseFloat(curr.BilledCost) || 0), 0);
+
+    // 4d. Cost With Missing Metadata - Cost where ServiceName, RegionName, or ResourceName is NULL
+    const missingMetadataCost = filtered
+      .filter(item => {
+        const hasServiceName = item.ServiceName && item.ServiceName.trim() !== '';
+        const hasRegionName = item.RegionName && item.RegionName.trim() !== '';
+        const hasResourceName = item.ResourceName && item.ResourceName.trim() !== '';
+        return !hasServiceName || !hasRegionName || !hasResourceName;
+      })
+      .reduce((acc, curr) => acc + (parseFloat(curr.BilledCost) || 0), 0);
+
     return { 
       totalSpend, 
       dailyData, 
@@ -113,7 +171,14 @@ const DashboardPage = () => {
       topRegion: { name: topRegion?.[0], value: topRegion?.[1] },
       topService: groupedData[0], // Top item of current group
       regionData, // For pie chart
-      filteredRecords: filtered 
+      filteredRecords: filtered,
+      anomalies: anomalies,
+      anomaliesCount: anomalies.length,
+      // New KPIs
+      spendChangePercent,
+      topProvider: { name: topProvider?.[0] || 'N/A', value: topProvider?.[1] || 0 },
+      untaggedCost,
+      missingMetadataCost
     };
   }, [rawData, filters, groupBy, chartFilters]);
 
@@ -123,7 +188,7 @@ const DashboardPage = () => {
   return (
     <div className="min-h-screen bg-[#0f0f11] text-white font-sans">
       <VerticalSidebar />
-      <Header title="Cost Overview" />
+      <Header title="Cost Overview" anomalies={processedData.anomalies} anomaliesCount={processedData.anomaliesCount} />
 
       <main className="ml-[240px] pt-[64px] min-h-screen relative">
         <div className="p-6 space-y-4 max-w-[1920px] mx-auto">
@@ -142,6 +207,11 @@ const DashboardPage = () => {
             spend={processedData.totalSpend}
             topRegion={processedData.topRegion}
             topService={processedData.topService}
+            spendChangePercent={processedData.spendChangePercent}
+            topProvider={processedData.topProvider}
+            untaggedCost={processedData.untaggedCost}
+            missingMetadataCost={processedData.missingMetadataCost}
+            filteredRecords={processedData.filteredRecords}
           />
 
           {/* Charts Grid - Visual Only */}
