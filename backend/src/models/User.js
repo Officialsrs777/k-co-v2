@@ -20,6 +20,9 @@ const User = sequelize.define(
       defaultValue: UserRole.USER,
     },
     is_active: { type: DataTypes.BOOLEAN, defaultValue: true },
+    is_verified: { type: DataTypes.BOOLEAN, defaultValue: false },
+    verification_otp: { type: DataTypes.STRING, allowNull: true },
+    verification_otp_expires: { type: DataTypes.DATE, allowNull: true },
     createdAt: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   },
   {

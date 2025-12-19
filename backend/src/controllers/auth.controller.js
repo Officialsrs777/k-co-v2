@@ -3,77 +3,99 @@ import * as clientService from "../services/client.service.js";
 import { isValidEmail } from "../utils/emailValidation.js";
 import bcrypt from "bcrypt";
 import { generateJWT } from "../utils/generateJWT.js";
+import { generateVerificationOTP } from "../utils/generateVerificationOTP.js";
+import { sendVerificationEmail } from "../utils/sendVerificationEmail.js";
 
 export const signUp = async (req, res) => {
   try {
-    const { email, password, full_name, client_name, client_email } = req.body;
+    const {
+      email,
+      password,
+      full_name,
+      role,
+      client_name,
+      client_email
+    } = req.body;
 
-    /* 1. Required fields */
-    if (!email || !password || !full_name || !client_name || !client_email) {
-      return res.status(400).json({
-        message: "Email, password, full name, client name, and client email are required",
-      });
-    }
-
-    /* 2. Minimal email validation */
-    if (!isValidEmail(email) || !isValidEmail(client_email)) {
-      return res.status(400).json({
-        message: "Invalid email format",
-      });
-    }
-
-    /* 3. Normalize email */
     const normalizedEmail = email.toLowerCase().trim();
     const normalizedClientEmail = client_email.toLowerCase().trim();
 
-    /* 4. Check existing user */
+    // 1. Generate verification OTP ONCE
+    const { otp, expires } = generateVerificationOTP();
+
+    let user;
+
+    // 2. Check existing user
     const existingUser = await userService.getUserByEmail(normalizedEmail);
+
     if (existingUser) {
-      return res.status(409).json({
-        message: "User already exists",
+      if (existingUser.is_verified) {
+        return res.status(409).json({
+          message: "User already exists"
+        });
+      }
+
+      // Re-send verification for unverified user
+      existingUser.verification_otp = otp;
+      existingUser.verification_otp_expires = expires;
+      await existingUser.save();
+
+      await sendVerificationEmail(
+        existingUser.email,
+        existingUser.full_name,
+        otp
+      );
+
+      return res.status(200).json({
+        message: "User is already registered. Verify the email. Verification OTP resent. Please verify your email.",
+        user: {
+          id: existingUser.id,
+          email: existingUser.email,
+          role: existingUser.role,
+          client_id: existingUser.client_id,
+          createdAt: existingUser.createdAt
+        }
       });
-    }
-
-    const existingClient = await clientService.getClientByEmail(
-      normalizedClientEmail
-    );
-
-    let client_id;
-
-    if (existingClient) {
-      client_id = existingClient.id;
     } else {
-      const newClient = await clientService.createClient({
-        name: client_name,
-        email: normalizedClientEmail,
-      });
+      // 3. Check or create client
+      const client =
+        (await clientService.getClientByEmail(normalizedClientEmail)) ??
+        (await clientService.createClient({
+          name: client_name,
+          email: normalizedClientEmail
+        }));
 
-      client_id = newClient.id;
+      // 4. Create user
+      user = await userService.createUser({
+        client_id: client.id,
+        email: normalizedEmail,
+        password_hash: password,
+        role: role,
+        full_name,
+        verification_otp: otp,
+        verification_otp_expires: expires,
+        is_verified: false
+      });
     }
 
-    /* 5. Create user */
-    const user = await userService.createUser({
-      client_id: client_id,
-      email: normalizedEmail,
-      password_hash: password,
-      full_name,
-    });
+    // 5. Send verification email (ONLY ONCE)
+    await sendVerificationEmail(user.email, user.full_name, otp);
 
-    /* 6. Response */
+    // 6. Response
     return res.status(201).json({
-      message: "User registered successfully",
+      message: "User registered successfully. Please verify your email.",
       user: {
         id: user.id,
         email: user.email,
         role: user.role,
         client_id: user.client_id,
         createdAt: user.createdAt
-      },
+      }
     });
   } catch (error) {
     console.error("Signup error:", error);
     return res.status(500).json({
-      message: "Internal server error",
+      message: "Internal server error"
     });
   }
 };
@@ -102,6 +124,17 @@ export const signIn = async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({
         message: "Invalid email or password",
+      });
+    }
+
+    if (!user.is_verified) {
+      const { otp, expires } = generateVerificationOTP();
+      user.verification_otp = otp;
+      user.verification_otp_expires = expires;
+      await user.save();
+      await sendVerificationEmail(user.email, user.full_name, otp);
+      return res.status(403).json({
+        message: "OTP sent on registered Email.Please verify your email before logging in.",
       });
     }
     /* 5. Generate JWT */
@@ -157,4 +190,30 @@ export const logout = (req, res) => {
     sameSite: "strict",
   });
   return res.status(200).json({ message: "Logged out successfully" });
+};
+
+export const verifyEmail = async (req, res) => {
+  try {
+    const { email, otp } = req.body;  
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await userService.getUserByEmail(normalizedEmail);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (user.is_verified) {
+      return res.status(400).json({ message: "User already verified" });
+    }
+    if (user.verification_otp !== otp || new Date() > user.verification_otp_expires) {
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+    }
+    user.is_verified = true;
+    user.verification_otp = null;
+    user.verification_otp_expires = null;
+    await user.save();
+    return res.status(200).json({ message: "Email verified successfully" });
+  } catch (error) {
+    console.error("Email verification error:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
