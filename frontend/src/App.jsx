@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { SignedIn, SignedOut } from "@clerk/clerk-react";
 
 // Components
 import Navbar from './components/Navbar';
@@ -21,6 +20,7 @@ import SignInPage from './components/Auth/SignInPage';
 import SignUpPage from './components/Auth/SignUpPage';
 
 import './index.css';
+import VerifyEmailPage from './components/Auth/VerifyEmailPage';
 
 const Home = () => (
   <div className="min-h-screen bg-[#0f0f11] font-sans overflow-x-hidden">
@@ -54,17 +54,20 @@ function App() {
           path="/dashboard/*" 
           element={
             <>
-              <SignedIn>
                 <Dashboard />
-              </SignedIn>
-              <SignedOut>
-                <Navigate to="/sign-in" />
-              </SignedOut>
             </>
           } 
         />
-        
-        <Route path="/upload" element={<CSVUpload />} />
+        <Route 
+          path="/dashboard/data-explorer" 
+          element={
+            <>
+                <DataExplorerPage />
+            </>
+          } 
+        />
+         <Route path="/upload" element={<CSVUpload />} />
+          <Route path="/verify-email/:email" element={<VerifyEmailPage />} />
 
       </Routes>
     </Router>
