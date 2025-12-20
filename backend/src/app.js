@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 import clientRoutes from './routes/client.route.js';
 import userRoutes from './routes/user.route.js';
 import authRoutes from './routes/auth.route.js';
+import dataRoutes from './routes/data.route.js';
 import sequelize from './config/db.js';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
@@ -24,9 +25,10 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Routes
-app.use('/clients', clientRoutes);
-app.use('/users', userRoutes);
-app.use('/auth' , authRoutes);
+app.use('/api/clients', clientRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/auth' , authRoutes);
+app.use('/api/' , dataRoutes ); // csv upload 
 
 
 // Start server after DB connection
