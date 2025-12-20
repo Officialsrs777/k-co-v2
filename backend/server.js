@@ -1,13 +1,14 @@
-require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
-const multer = require('multer');
-const csv = require('csv-parser');
-const fs = require('fs');
-const path = require('path');
+import dotenv from 'dotenv';
+import express from 'express';
+import cors from 'cors';
+import multer from 'multer';
+import csv from 'csv-parser';
+import fs from 'fs';
+import path from 'path';
 
 const app = express();
 const upload = multer({ dest: 'uploads/' });
+
 
 app.use(cors());
 app.use(express.json());

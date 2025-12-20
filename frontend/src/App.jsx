@@ -12,16 +12,17 @@ import InquirySection from './components/InquirySection';
 import Footer from './components/Footer';
 
 // Dashboard Components
+// NOTE: DashboardPage handles the internal routing for data-explorer, cost-analysis, etc.
 import Dashboard from './components/Dashboard/DashboardPage';
 import CSVUpload from './components/CSVUpload';
 
 // Auth Pages
 import SignInPage from './components/Auth/SignInPage';
 import SignUpPage from './components/Auth/SignUpPage';
+import VerifyEmailPage from './components/Auth/VerifyEmailPage';
 
 import './index.css';
-import VerifyEmailPage from './components/Auth/VerifyEmailPage';
-import DataExplore from './components/Dashboard/DataExplorer';
+
 const Home = () => (
   <div className="min-h-screen bg-[#0f0f11] font-sans overflow-x-hidden">
     <Navbar /> 
@@ -48,26 +49,18 @@ function App() {
         <Route path="/sign-in/*" element={<SignInPage />} />
         <Route path="/sign-up/*" element={<SignUpPage />} />
 
-        {/* Protected Dashboard Routes - UPDATED */}
-        {/* We use /dashboard/* to capture sub-routes like /data-explorer */}
-        <Route 
-          path="/dashboard/*" 
-          element={
-            <>
-                <Dashboard />
-            </>
-          } 
-        />
-        <Route 
-          path="/dashboard/data-explorer" 
-          element={
-            <>
-                <DataExplore />
-            </>
-          } 
-        />
-         <Route path="/upload" element={<CSVUpload />} />
-          <Route path="/verify-email/:email" element={<VerifyEmailPage />} />
+        {/* CRITICAL FIX: 
+          We use /dashboard/* to capture ALL sub-routes (like /dashboard/data-explorer).
+          This ensures the Dashboard layout (Sidebar + Header) always loads first.
+        */}
+        <Route path="/dashboard/*" element={<Dashboard />} />
+
+        {/* ❌ REMOVED THE SEPARATE /dashboard/data-explorer ROUTE 
+          That route was bypassing the Dashboard layout, causing the black screen.
+        */}
+
+        <Route path="/upload" element={<CSVUpload />} />
+        <Route path="/verify-email/:email" element={<VerifyEmailPage />} />
 
       </Routes>
     </Router>

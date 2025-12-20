@@ -1,367 +1,303 @@
 import React, { useMemo, useState } from 'react';
 import { 
-  TrendingUp, TrendingDown, DollarSign, Calendar, Filter, 
-  PieChart, BarChart3, ArrowRight, AlertTriangle, Layers, 
-  Check, X, Zap, ChevronDown
+  BarChart3, LineChart as LineChartIcon, Activity, 
+  Layers, ChevronDown, DollarSign, ArrowUpRight, ArrowDownRight,
+  Maximize2, AlertCircle, Info, Download, Target, Calendar, X, Eye, EyeOff
 } from 'lucide-react';
+import { 
+  BarChart, Bar, LineChart, Line, AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, 
+  ResponsiveContainer, ReferenceLine, Brush 
+} from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- UTILITY: FORMAT CURRENCY ---
-const formatCurrency = (val) => 
-  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(val);
+// --- CONSTANTS ---
+const TOP_N_LIMIT = 5; 
+const COLOR_PALETTE = ['#a02ff1', '#3b82f6', '#10b981', '#f59e0b', '#ec4899']; 
+const OTHER_COLOR = '#4b5563'; 
 
-// --- COMPONENT: CUSTOM STACKED BAR CHART ---
-// A lightweight, responsive chart built with Flexbox/CSS to avoid heavy libraries
-const StackedChart = ({ data, keys, height = 300 }) => {
-  const maxTotal = Math.max(...data.map(d => d.total));
+// --- SMART CURRENCY FORMATTER (Handles Micro-costs) ---
+const formatCurrency = (val, precision = null) => {
+  if (val === 0) return '$0.00';
+  const absVal = Math.abs(val);
   
-  if (data.length === 0) return <div className="h-full flex items-center justify-center text-gray-500">No data for chart</div>;
-
-  return (
-    <div className="w-full h-full flex flex-col">
-      <div className="flex-1 flex items-end gap-1 relative pt-6">
-        {/* Grid Lines */}
-        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 z-0">
-          {[1, 0.75, 0.5, 0.25, 0].map(p => (
-            <div key={p} className="w-full border-t border-gray-500 relative">
-              <span className="absolute -top-3 -left-8 text-[9px] text-gray-400">
-                ${(maxTotal * p).toLocaleString(undefined, { notation: "compact" })}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Bars */}
-        {data.map((day, idx) => (
-          <div key={idx} className="flex-1 flex flex-col justify-end h-full relative group z-10">
-            {/* Tooltip */}
-            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#25262b] border border-white/10 p-2 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none w-40 z-50 text-[10px]">
-              <div className="font-bold text-white mb-1 border-b border-white/10 pb-1">{day.date}</div>
-              <div className="space-y-0.5">
-                {day.stacks.sort((a,b) => b.value - a.value).slice(0, 5).map(s => (
-                  <div key={s.key} className="flex justify-between text-gray-300">
-                    <span className="truncate w-24">{s.key}</span>
-                    <span className="font-mono text-white">${s.value.toFixed(2)}</span>
-                  </div>
-                ))}
-                {day.stacks.length > 5 && <div className="text-gray-500 italic">...and {day.stacks.length - 5} more</div>}
-                <div className="pt-1 mt-1 border-t border-white/10 flex justify-between font-bold text-[#a02ff1]">
-                   <span>Total</span>
-                   <span>${day.total.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Stack Segments */}
-            <div className="w-full bg-[#1a1b20] rounded-t-sm overflow-hidden flex flex-col-reverse hover:brightness-110 transition-all cursor-pointer" style={{ height: `${(day.total / maxTotal) * 100}%` }}>
-              {day.stacks.map((stack, sIdx) => (
-                <div 
-                  key={sIdx}
-                  className="w-full transition-all"
-                  style={{ 
-                    height: `${(stack.value / day.total) * 100}%`,
-                    backgroundColor: stack.color 
-                  }} 
-                />
-              ))}
-            </div>
-            
-            {/* X-Axis Label */}
-            <div className="mt-2 text-[9px] text-gray-500 text-center -rotate-45 origin-top-left truncate w-6">
-              {day.date.slice(5)}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  let digits = precision !== null ? precision : 2;
+  if (precision === null) {
+    if (absVal < 0.01) digits = 4;
+    if (absVal < 0.0001) digits = 6;
+  }
+  
+  return new Intl.NumberFormat('en-US', { 
+    style: 'currency', 
+    currency: 'USD', 
+    minimumFractionDigits: digits, 
+    maximumFractionDigits: digits 
+  }).format(val);
 };
 
 const CostAnalysis = ({ data }) => {
-  // --- STATE ---
-  const [groupBy, setGroupBy] = useState('ServiceName'); // ServiceName, RegionName, ProviderName, or TAG:xxx
-  const [timeRange, setTimeRange] = useState('30'); // Days
-  const [selectedFilters, setSelectedFilters] = useState({}); // { ProviderName: 'AWS' }
+  const [groupBy, setGroupBy] = useState('ServiceName'); 
+  const [chartType, setChartType] = useState('bar'); 
+  const [showAverage, setShowAverage] = useState(true);
+  const [hiddenSeries, setHiddenSeries] = useState(new Set());
+  const [activeSolo, setActiveSolo] = useState(null);
+  const [selectedKpi, setSelectedKpi] = useState(null);
 
-  // --- 1. PARSE & PROCESS DATA ---
-  const { allTags, processedData, uniqueValues } = useMemo(() => {
-    if (!data || !data.length) return { allTags: [], processedData: [], uniqueValues: {} };
+  // --- 1. DATA PROCESSING ENGINE ---
+  const processed = useMemo(() => {
+    if (!data || !data.length) return null;
 
-    // 1. Identify all available Tag Keys (e.g., 'environment', 'business_unit')
-    const tagKeys = new Set();
-    const cleanData = data.map(row => {
-      let parsedTags = {};
-      try {
-        if (row.Tags) {
-          // Handle potential double-escaped JSON from CSV
-          const cleanedJson = row.Tags.replace(/""/g, '"').replace(/^"|"$/g, '');
-          parsedTags = JSON.parse(cleanedJson);
-          Object.keys(parsedTags).forEach(k => tagKeys.add(k));
-        }
-      } catch (e) { /* ignore invalid json */ }
-      
-      // Add numeric cost for safety
-      return {
-        ...row,
-        _cost: parseFloat(row.BilledCost) || 0,
-        _date: row.ChargePeriodStart ? row.ChargePeriodStart.split(' ')[0] : 'Unknown',
-        _tags: parsedTags
-      };
-    });
+    const cleanData = data.map(row => ({
+      ...row,
+      _cost: parseFloat(row.BilledCost) || 0,
+      _date: row.ChargePeriodStart ? row.ChargePeriodStart.split(' ')[0] : 'Unknown',
+      _group: row[groupBy] || 'Unknown'
+    }));
 
-    // 2. Extract Unique Values for Filters
-    const uniques = {
-      ProviderName: [...new Set(cleanData.map(d => d.ProviderName).filter(Boolean))],
-      ServiceName: [...new Set(cleanData.map(d => d.ServiceName).filter(Boolean))],
-      RegionName: [...new Set(cleanData.map(d => d.RegionName).filter(Boolean))],
-    };
-
-    return { allTags: Array.from(tagKeys), processedData: cleanData, uniqueValues: uniques };
-  }, [data]);
-
-  // --- 2. AGGREGATE FOR CHART ---
-  const chartData = useMemo(() => {
-    // A. Filter Data
-    let filtered = processedData;
-    Object.entries(selectedFilters).forEach(([key, val]) => {
-      if (val) filtered = filtered.filter(d => d[key] === val);
-    });
-
-    // B. Group By Logic
-    const dailyGroups = {};
-    const groupKeys = new Set();
-    const colorPalette = ['#a02ff1', '#7c3aed', '#5b21b6', '#4c1d95', '#3b82f6', '#2563eb', '#1d4ed8', '#10b981', '#059669', '#f59e0b', '#d97706'];
-
-    filtered.forEach(row => {
-      const date = row._date;
-      if (!dailyGroups[date]) dailyGroups[date] = { date, total: 0, stacks: {} };
-
-      // Determine Group Key (Handle Tags specially)
-      let key = 'Other';
-      if (groupBy.startsWith('TAG:')) {
-        const tagKey = groupBy.replace('TAG:', '');
-        key = row._tags[tagKey] || 'Untagged';
-      } else {
-        key = row[groupBy] || 'Unknown';
-      }
-
-      groupKeys.add(key);
-      dailyGroups[date].stacks[key] = (dailyGroups[date].stacks[key] || 0) + row._cost;
-      dailyGroups[date].total += row._cost;
-    });
-
-    // C. Assign Colors to Keys
-    const keyColors = {};
-    Array.from(groupKeys).forEach((k, i) => {
-      keyColors[k] = colorPalette[i % colorPalette.length];
-    });
-
-    // D. Format for Chart Component
-    return Object.values(dailyGroups)
-      .sort((a, b) => a.date.localeCompare(b.date))
-      .map(day => ({
-        date: day.date,
-        total: day.total,
-        stacks: Object.entries(day.stacks).map(([k, v]) => ({
-          key: k,
-          value: v,
-          color: keyColors[k]
-        }))
-      }));
-  }, [processedData, groupBy, selectedFilters]);
-
-  // --- 3. INSIGHTS GENERATION ---
-  const insights = useMemo(() => {
-    if (!chartData.length) return null;
-
-    const totalSpend = chartData.reduce((acc, day) => acc + day.total, 0);
-    const avgDaily = totalSpend / chartData.length;
-    
-    // Forecast (Simple Projection)
-    const forecast = avgDaily * 30; // Next 30 days
-
-    // Top Mover (Group)
     const groupTotals = {};
-    chartData.forEach(day => {
-       day.stacks.forEach(s => {
-         groupTotals[s.key] = (groupTotals[s.key] || 0) + s.value;
-       });
+    cleanData.forEach(d => { groupTotals[d._group] = (groupTotals[d._group] || 0) + d._cost; });
+
+    const sortedKeys = Object.entries(groupTotals).sort((a, b) => b[1] - a[1]).map(entry => entry[0]);
+    const topKeys = sortedKeys.slice(0, TOP_N_LIMIT);
+    const topKeysSet = new Set(topKeys);
+
+    const dailyMap = {};
+    let grandTotal = 0;
+
+    cleanData.forEach(row => {
+      const date = row._date;
+      if (!dailyMap[date]) dailyMap[date] = { date, total: 0, Others: 0 };
+      topKeys.forEach(k => { if (dailyMap[date][k] === undefined) dailyMap[date][k] = 0; });
+
+      const key = topKeysSet.has(row._group) ? row._group : 'Others';
+      dailyMap[date][key] = (dailyMap[date][key] || 0) + row._cost;
+      dailyMap[date].total += row._cost;
+      grandTotal += row._cost;
     });
-    const topGroup = Object.entries(groupTotals).sort((a,b) => b[1] - a[1])[0];
 
-    return { totalSpend, forecast, topGroup };
-  }, [chartData]);
+    const finalData = Object.values(dailyMap).sort((a, b) => a.date.localeCompare(b.date));
+    const average = grandTotal / (finalData.length || 1);
+    const maxDayObj = [...finalData].sort((a,b) => b.total - a.total)[0];
 
+    let othersTotal = 0;
+    Object.entries(groupTotals).forEach(([k, v]) => { if (!topKeysSet.has(k)) othersTotal += v; });
+    groupTotals['Others'] = othersTotal;
 
-  // --- RENDER ---
+    const mid = Math.floor(finalData.length / 2);
+    const prevHalf = finalData.slice(0, mid).reduce((a, b) => a + b.total, 0);
+    const currHalf = finalData.slice(mid).reduce((a, b) => a + b.total, 0);
+
+    return { 
+      chartData: finalData, activeKeys: [...topKeys, 'Others'],
+      totalSpend: grandTotal, avgDaily: average, trend: prevHalf ? ((currHalf - prevHalf) / prevHalf) * 100 : 0,
+      categoryTotals: groupTotals, maxDaily: maxDayObj?.total || 0, peakDay: maxDayObj?.date
+    };
+  }, [data, groupBy]);
+
+  const toggleSeries = (key) => {
+    const newSet = new Set(hiddenSeries);
+    if (newSet.has(key)) newSet.delete(key);
+    else newSet.add(key);
+    setHiddenSeries(newSet);
+  };
+
+  const handleSolo = (key) => {
+    if (activeSolo === key) { setActiveSolo(null); setHiddenSeries(new Set()); }
+    else {
+      setActiveSolo(key);
+      setHiddenSeries(new Set(processed.activeKeys.filter(k => k !== key)));
+    }
+  };
+
+  const getKpiDetails = () => {
+    if (!selectedKpi || !processed) return null;
+    const topItems = Object.entries(processed.categoryTotals).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+    switch(selectedKpi) {
+      case 'Total Spend': return { title: "Spend Breakdown", description: "Top spending categories across the selected timeframe.", items: topItems.map(([name, val]) => ({ name, val })) };
+      case 'Daily Average': return { title: "Burn Rate Efficiency", description: "Standard daily operating cost.", stats: [{ label: 'Baseline Avg', val: processed.avgDaily }, { label: 'Peak Variance', val: processed.maxDaily - processed.avgDaily }] };
+      case 'Peak Usage': return { title: "Maximum Resource Load", description: `Highest recorded spend on ${processed.peakDay}.`, tip: "Often corresponds to database backups or scheduled maintenance." };
+      case 'Period Trend': return { title: "Growth Direction", description: "Comparison between the first and second half of the dataset.", status: processed.trend > 0 ? "⚠️ Costs Increasing" : "✅ Costs Stabilizing" };
+      default: return null;
+    }
+  };
+
+  if (!processed) return null;
+  const kpiDetails = getKpiDetails();
+
   return (
-    <div className="p-6 space-y-6 min-h-screen bg-[#0f0f11] text-white font-sans animate-in fade-in duration-500">
-      
-      {/* 1. HEADER & CONTROLS */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-         <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              <PieChart className="text-[#a02ff1]" /> Cost Analysis
-            </h1>
-            <p className="text-gray-400 text-sm">Analyze spend drivers across clouds, services, and custom tags.</p>
-         </div>
-
-         {/* Control Bar */}
-         <div className="flex flex-wrap items-center gap-3 bg-[#1a1b20] p-2 rounded-xl border border-white/10">
-            {/* Dimension Selector */}
-            <div className="relative group">
-               <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 border border-white/10 rounded-lg text-xs cursor-pointer hover:border-[#a02ff1] transition-colors">
-                  <Layers size={14} className="text-gray-400" />
-                  <span className="text-gray-300">Group By:</span>
-                  <span className="font-bold text-white">
-                    {groupBy.startsWith('TAG:') ? `Tag: ${groupBy.replace('TAG:', '')}` : groupBy.replace('Name', '')}
-                  </span>
-                  <ChevronDown size={12} className="text-gray-500" />
-               </div>
-               
-               {/* Dropdown Menu */}
-               <div className="absolute top-full right-0 mt-2 w-56 bg-[#25262b] border border-white/10 rounded-xl shadow-2xl z-50 p-2 hidden group-hover:block">
-                  <div className="text-[10px] uppercase text-gray-500 font-bold px-2 py-1">Dimensions</div>
-                  {['ServiceName', 'RegionName', 'ProviderName', 'BillingAccountName'].map(d => (
-                    <button key={d} onClick={() => setGroupBy(d)} className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white/5 ${groupBy === d ? 'text-[#a02ff1] bg-[#a02ff1]/10' : 'text-gray-300'}`}>
-                      {d.replace('Name', '')}
-                    </button>
-                  ))}
-                  
-                  {allTags.length > 0 && (
-                    <>
-                      <div className="border-t border-white/10 my-1 mx-2"></div>
-                      <div className="text-[10px] uppercase text-gray-500 font-bold px-2 py-1">Tags (Auto-Detected)</div>
-                      {allTags.map(tag => (
-                        <button key={tag} onClick={() => setGroupBy(`TAG:${tag}`)} className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-white/5 ${groupBy === `TAG:${tag}` ? 'text-[#a02ff1] bg-[#a02ff1]/10' : 'text-gray-300'}`}>
-                          {tag}
-                        </button>
-                      ))}
-                    </>
-                  )}
-               </div>
-            </div>
-
-            <div className="h-6 w-px bg-white/10" />
-
-            {/* Simple Filter Example */}
-            <div className="flex items-center gap-2">
-               <select 
-                 className="bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-[#a02ff1]"
-                 onChange={(e) => setSelectedFilters(prev => ({ ...prev, ProviderName: e.target.value || undefined }))}
-               >
-                 <option value="">All Providers</option>
-                 {uniqueValues.ProviderName?.map(p => <option key={p} value={p}>{p}</option>)}
-               </select>
-            </div>
-         </div>
-      </div>
+    <div className="flex flex-col h-full bg-[#0f0f11] text-white overflow-hidden relative">
+      <header className="flex justify-between items-center p-6 border-b border-white/5 shrink-0">
+        <h1 className="text-2xl font-bold flex items-center gap-3">
+          <div className="p-2 bg-[#a02ff1]/10 rounded-lg text-[#a02ff1]"><Target size={22} /></div>
+          Advanced Cost Analysis
+        </h1>
+        <div className="flex gap-2">
+          <button className="flex items-center gap-2 px-4 py-1.5 bg-[#a02ff1] hover:bg-[#8e25d9] rounded-lg text-xs font-bold transition-all shadow-lg"><Download size={14} /> Export</button>
+        </div>
+      </header>
 
       {/* 2. KPI CARDS */}
-      {insights && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-           {/* Total Spend */}
-           <div className="p-4 bg-[#1a1b20] border border-white/10 rounded-xl flex items-center justify-between">
-              <div>
-                 <p className="text-gray-400 text-xs font-bold uppercase">Total Spend (Period)</p>
-                 <h2 className="text-2xl font-bold text-white mt-1">{formatCurrency(insights.totalSpend)}</h2>
-              </div>
-              <div className="p-3 bg-[#a02ff1]/10 rounded-full text-[#a02ff1]"><DollarSign size={20} /></div>
-           </div>
-
-           {/* Forecast */}
-           <div className="p-4 bg-[#1a1b20] border border-white/10 rounded-xl flex items-center justify-between relative overflow-hidden">
-              <div className="z-10">
-                 <p className="text-gray-400 text-xs font-bold uppercase">Projected (30 Days)</p>
-                 <h2 className="text-2xl font-bold text-white mt-1">{formatCurrency(insights.forecast)}</h2>
-              </div>
-              <div className="p-3 bg-blue-500/10 rounded-full text-blue-500 z-10"><TrendingUp size={20} /></div>
-              {/* Background Graph Effect */}
-              <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-blue-500/20 to-transparent" />
-           </div>
-
-           {/* Top Driver */}
-           <div className="p-4 bg-[#1a1b20] border border-white/10 rounded-xl flex items-center justify-between">
-              <div className="truncate pr-2">
-                 <p className="text-gray-400 text-xs font-bold uppercase">Top Cost Driver</p>
-                 <h2 className="text-lg font-bold text-white mt-1 truncate" title={insights.topGroup?.[0]}>
-                   {insights.topGroup ? insights.topGroup[0] : 'N/A'}
-                 </h2>
-                 <p className="text-xs text-[#a02ff1] font-mono">
-                   {insights.topGroup ? formatCurrency(insights.topGroup[1]) : '$0.00'}
-                 </p>
-              </div>
-              <div className="p-3 bg-orange-500/10 rounded-full text-orange-500"><AlertTriangle size={20} /></div>
-           </div>
-        </div>
-      )}
-
-      {/* 3. MAIN CHART SECTION */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[500px]">
-         
-         {/* Main Chart */}
-         <div className="lg:col-span-3 bg-[#1a1b20] border border-white/10 rounded-xl p-5 flex flex-col shadow-lg">
-            <div className="flex justify-between items-center mb-6">
-               <h3 className="font-bold text-white flex items-center gap-2">
-                 <BarChart3 size={16} className="text-[#a02ff1]" /> 
-                 Spend Trend by <span className="text-[#a02ff1]">{groupBy.startsWith('TAG:') ? groupBy.replace('TAG:', '') : groupBy.replace('Name', '')}</span>
-               </h3>
-               {/* Legend (Top 3) */}
-               <div className="flex gap-4 text-xs">
-                  {chartData[0]?.stacks.slice(0, 3).map((s, i) => (
-                    <div key={i} className="flex items-center gap-1.5">
-                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: s.color }} />
-                       <span className="text-gray-300 truncate max-w-[100px]">{s.key}</span>
-                    </div>
-                  ))}
-               </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 pt-0 mt-6">
+        {[
+          { label: 'Total Spend', value: formatCurrency(processed.totalSpend), icon: DollarSign, color: 'text-purple-400' },
+          { label: 'Daily Average', value: formatCurrency(processed.avgDaily), icon: Activity, color: 'text-blue-400' },
+          { label: 'Peak Usage', value: formatCurrency(processed.maxDaily), icon: Maximize2, color: 'text-emerald-400' },
+          { label: 'Period Trend', value: `${processed.trend > 0 ? '+' : ''}${processed.trend.toFixed(1)}%`, icon: processed.trend > 0 ? ArrowUpRight : ArrowDownRight, color: processed.trend > 0 ? 'text-red-400' : 'text-green-400' },
+        ].map((kpi, i) => (
+          <motion.div key={i} whileHover={{ y: -4 }} onClick={() => setSelectedKpi(kpi.label)} className="bg-[#1a1b20] border border-white/5 p-4 rounded-2xl cursor-pointer hover:border-[#a02ff1]/40 transition-all shadow-sm group">
+            <div className="flex justify-between text-gray-500 mb-1">
+              <span className="text-[10px] uppercase font-bold tracking-widest">{kpi.label}</span>
+              <kpi.icon size={14} className={kpi.color} />
             </div>
-            
-            <div className="flex-1 w-full min-h-0">
-               <StackedChart data={chartData} />
-            </div>
-         </div>
-
-         {/* Side Breakdown Panel */}
-         <div className="bg-[#1a1b20] border border-white/10 rounded-xl p-0 flex flex-col overflow-hidden">
-            <div className="p-4 border-b border-white/10 bg-[#25262b]">
-               <h3 className="font-bold text-white text-sm">Cost Breakdown</h3>
-            </div>
-            <div className="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-gray-700">
-               {/* Sort stacks by total value */}
-               {Object.entries(
-                 chartData.reduce((acc, day) => {
-                   day.stacks.forEach(s => {
-                     if (!acc[s.key]) acc[s.key] = { value: 0, color: s.color };
-                     acc[s.key].value += s.value;
-                   });
-                   return acc;
-                 }, {})
-               )
-               .sort((a, b) => b[1].value - a[1].value)
-               .map(([key, data], idx) => (
-                 <div key={key} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg group transition-colors cursor-pointer">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                       <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: data.color }} />
-                       <span className="text-xs text-gray-300 truncate group-hover:text-white transition-colors" title={key}>{key}</span>
-                    </div>
-                    <div className="text-right">
-                       <div className="text-xs font-mono font-bold text-white">{formatCurrency(data.value)}</div>
-                       <div className="text-[9px] text-gray-500">
-                         {((data.value / insights.totalSpend) * 100).toFixed(1)}%
-                       </div>
-                    </div>
-                 </div>
-               ))}
-            </div>
-            <div className="p-3 border-t border-white/10 bg-[#15161a] text-center">
-               <button className="text-xs text-[#a02ff1] hover:text-white flex items-center justify-center gap-1 transition-colors">
-                 View Full Report <ArrowRight size={12} />
-               </button>
-            </div>
-         </div>
+            <div className="text-xl font-bold tracking-tight">{kpi.value}</div>
+          </motion.div>
+        ))}
       </div>
 
+      <div className="flex flex-1 gap-6 px-6 pb-6 overflow-hidden min-h-0">
+        {/* 3. GRAPH BOX */}
+        <div className="flex-[3] flex flex-col bg-[#1a1b20] border border-white/5 rounded-3xl p-6 relative overflow-hidden shadow-xl">
+          <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col gap-1">
+                <h2 className="font-bold text-lg">Cost Projection</h2>
+                <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                    {processed.trend > 0 ? <ArrowUpRight size={10} className="text-red-400" /> : <ArrowDownRight size={10} className="text-green-400" />}
+                    {Math.abs(processed.trend).toFixed(1)}% Deviation Observed
+                </div>
+            </div>
+            
+            <div className="flex items-center gap-3 bg-[#0f0f11] p-1.5 rounded-xl border border-white/10 shadow-inner">
+              <div className="flex gap-1 pr-3 border-r border-white/10">
+                <button onClick={() => setChartType('bar')} className={`p-2 rounded-lg transition-all ${chartType === 'bar' ? 'bg-[#a02ff1] text-white' : 'text-gray-500'}`}><BarChart3 size={16} /></button>
+                <button onClick={() => setChartType('area')} className={`p-2 rounded-lg transition-all ${chartType === 'area' ? 'bg-[#a02ff1] text-white' : 'text-gray-500'}`}><Activity size={16} /></button>
+                <button onClick={() => setChartType('line')} className={`p-2 rounded-lg transition-all ${chartType === 'line' ? 'bg-[#a02ff1] text-white' : 'text-gray-500'}`}><LineChartIcon size={16} /></button>
+              </div>
+              <select 
+                value={groupBy} onChange={(e) => setGroupBy(e.target.value)}
+                className="bg-[#0f0f11] text-xs font-bold px-2 py-1 text-white cursor-pointer rounded-lg border-none outline-none"
+                style={{ colorScheme: 'dark' }}
+              >
+                <option value="ServiceName">Service Name</option>
+                <option value="RegionName">Region</option>
+                <option value="ProviderName">Provider</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex-1 w-full min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              {chartType === 'bar' ? (
+                <BarChart data={processed.chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.02)" vertical={false} />
+                  <XAxis dataKey="date" stroke="#4b5563" fontSize={10} tickFormatter={str => str.slice(5)} axisLine={false} tickLine={false} />
+                  <YAxis stroke="#4b5563" fontSize={10} tickFormatter={val => `$${val}`} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: '#0f0f11', border: '1px solid #333', borderRadius: '12px' }} formatter={(val) => formatCurrency(val)} />
+                  {processed.activeKeys.map((key, index) => !hiddenSeries.has(key) && (
+                    <Bar key={key} dataKey={key} stackId="a" fill={key === 'Others' ? OTHER_COLOR : COLOR_PALETTE[index % COLOR_PALETTE.length]} radius={key === processed.activeKeys[processed.activeKeys.length-1] ? [3, 3, 0, 0] : [0,0,0,0]} />
+                  ))}
+                  {showAverage && <ReferenceLine y={processed.avgDaily} stroke="#ef4444" strokeDasharray="3 3" />}
+                  <Brush dataKey="date" height={25} stroke="#333" fill="#0f0f11" tickFormatter={() => ''} />
+                </BarChart>
+              ) : chartType === 'area' ? (
+                <AreaChart data={processed.chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.02)" vertical={false} />
+                  <XAxis dataKey="date" stroke="#4b5563" fontSize={10} tickFormatter={str => str.slice(5)} />
+                  <YAxis stroke="#4b5563" fontSize={10} tickFormatter={val => `$${val}`} />
+                  <Tooltip contentStyle={{ background: '#0f0f11', border: '1px solid #333', borderRadius: '12px' }} formatter={(val) => formatCurrency(val)} />
+                  {processed.activeKeys.map((key, index) => !hiddenSeries.has(key) && (
+                    <Area key={key} type="monotone" dataKey={key} stackId="1" stroke={key === 'Others' ? OTHER_COLOR : COLOR_PALETTE[index % COLOR_PALETTE.length]} fill={key === 'Others' ? OTHER_COLOR : COLOR_PALETTE[index % COLOR_PALETTE.length]} fillOpacity={0.4} />
+                  ))}
+                  <Brush dataKey="date" height={25} stroke="#333" fill="#0f0f11" />
+                </AreaChart>
+              ) : (
+                <LineChart data={processed.chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.02)" vertical={false} />
+                  <XAxis dataKey="date" stroke="#4b5563" fontSize={10} tickFormatter={str => str.slice(5)} />
+                  <YAxis stroke="#4b5563" fontSize={10} tickFormatter={val => `$${val}`} />
+                  <Tooltip contentStyle={{ background: '#0f0f11', border: '1px solid #333', borderRadius: '12px' }} formatter={(val) => formatCurrency(val)} />
+                  {processed.activeKeys.map((key, index) => !hiddenSeries.has(key) && (
+                    <Line key={key} type="monotone" dataKey={key} stroke={key === 'Others' ? OTHER_COLOR : COLOR_PALETTE[index % COLOR_PALETTE.length]} strokeWidth={2} dot={false} />
+                  ))}
+                </LineChart>
+              )}
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* 4. SIDEBAR LEADERS */}
+        <div className="flex-1 flex flex-col bg-[#1a1b20] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+          <div className="p-6 pb-4 border-b border-white/5 flex justify-between items-center">
+            <h3 className="font-bold text-xs uppercase tracking-widest text-gray-400">Analysis Breakdown</h3>
+            <button onClick={() => {setHiddenSeries(new Set()); setActiveSolo(null);}} className="text-[10px] text-[#a02ff1] font-bold hover:underline">Reset View</button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
+            {processed.activeKeys.map((key, idx) => {
+              const val = processed.categoryTotals[key];
+              const isHidden = hiddenSeries.has(key);
+              const color = key === 'Others' ? OTHER_COLOR : COLOR_PALETTE[idx % COLOR_PALETTE.length];
+              
+              return (
+                <div key={key} onClick={() => toggleSeries(key)} className={`flex items-center justify-between p-3 rounded-2xl cursor-pointer transition-all border ${isHidden ? 'bg-transparent border-transparent opacity-30 scale-95' : 'bg-[#0f0f11]/50 border-white/5 hover:border-[#a02ff1]/40 shadow-sm'}`}>
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <button onClick={(e) => { e.stopPropagation(); handleSolo(key); }} className={`w-6 h-6 rounded-lg flex items-center justify-center transition-colors ${activeSolo === key ? 'bg-[#a02ff1] text-white' : 'bg-white/10 text-gray-500 hover:text-white'}`}>
+                      <Target size={12} />
+                    </button>
+                    <div className="overflow-hidden">
+                      <div className="text-[11px] font-bold text-white truncate max-w-[100px]">{key}</div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
+                        <span className="text-[10px] text-gray-500">{((val/processed.totalSpend)*100).toFixed(1)}% share</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right font-mono text-xs font-bold text-[#a02ff1]">{formatCurrency(val)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* 5. MODAL DETAIL POPUP */}
+      <AnimatePresence>
+        {selectedKpi && kpiDetails && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-black/40">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="bg-[#1a1b20] border border-white/10 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
+              <div className="p-6 border-b border-white/5 flex justify-between items-center bg-[#25262b]">
+                <h3 className="text-xl font-bold text-white">{kpiDetails.title}</h3>
+                <button onClick={() => setSelectedKpi(null)} className="p-2 hover:bg-white/5 rounded-full text-gray-400 hover:text-white"><X size={20}/></button>
+              </div>
+              <div className="p-6 space-y-4">
+                <p className="text-sm text-gray-400">{kpiDetails.description}</p>
+                {kpiDetails.items && (
+                  <div className="space-y-2">
+                    {kpiDetails.items.map((item, i) => (
+                      <div key={i} className="flex justify-between items-center p-3 bg-black/20 rounded-xl border border-white/5">
+                        <span className="text-xs text-gray-300 truncate w-40">{item.name}</span>
+                        <span className="text-xs font-mono font-bold text-[#a02ff1]">{formatCurrency(item.val)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {kpiDetails.stats && (
+                   <div className="grid grid-cols-2 gap-3">
+                      {kpiDetails.stats.map((s, i) => (
+                        <div key={i} className="bg-black/20 p-3 rounded-xl border border-white/5 text-center">
+                           <div className="text-[10px] text-gray-500 uppercase font-bold">{s.label}</div>
+                           <div className="text-sm font-bold text-white mt-1">{formatCurrency(s.val)}</div>
+                        </div>
+                      ))}
+                   </div>
+                )}
+              </div>
+              <div className="p-4 bg-[#0f0f11] flex justify-end">
+                <button onClick={() => setSelectedKpi(null)} className="px-6 py-2 bg-[#a02ff1] text-white text-xs font-bold rounded-xl shadow-lg">Confirm & Close</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
