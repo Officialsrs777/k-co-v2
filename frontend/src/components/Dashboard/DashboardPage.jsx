@@ -14,6 +14,8 @@ import CostAnalysis from './CostAnalysis';
 import CostDrivers from './CostDrivers';
 import ResourceInventory from './ResourceInventory'; // ✅ Preserved
 import DataQuality from './DataQuality'; // ✅ Preserved
+import Optimization from './Optimization';
+import Reports from './Reports';
 import AccountsOwnership from './AccountsOwnership';
 
 const DashboardPage = () => {
@@ -132,6 +134,8 @@ const DashboardPage = () => {
   const isCostDrivers = location.pathname.includes('/cost-drivers'); 
   const isResources = location.pathname.includes('/resources'); // ✅ Preserved
   const isDataQuality = location.pathname.includes('/data-quality'); // ✅ Preserved
+  const isOptimization = location.pathname.includes('/optimization');
+  const isReports = location.pathname.includes('/reports');
 const isAccounts = location.pathname.includes('/accounts');
 
   const getPageTitle = () => {
@@ -140,6 +144,8 @@ const isAccounts = location.pathname.includes('/accounts');
     if (isCostDrivers) return "Cost Drivers"; 
     if (isResources) return "Resource Inventory"; 
     if (isDataQuality) return "Data Quality Hub";
+    if (isOptimization) return "Optimization";
+    if (isReports) return "Reports";
     return "Overview";
   };
 
@@ -194,6 +200,21 @@ const isAccounts = location.pathname.includes('/accounts');
             </div>
           )}
 
+          {/* 6. OPTIMIZATION VIEW */}
+          {isOptimization && (
+            <div className="animate-in fade-in zoom-in-95 duration-300">
+              <Optimization data={rawData} />
+            </div>
+          )}
+
+          {/* 7. REPORTS VIEW */}
+          {isReports && (
+            <div className="animate-in fade-in zoom-in-95 duration-300">
+              <Reports data={rawData} />
+            </div>
+          )}
+
+          {/* 8. OVERVIEW VIEW (Default) */}
           {isAccounts && (
    <div className="animate-in fade-in zoom-in-95 duration-300">
       <AccountsOwnership data={rawData} />
@@ -206,6 +227,8 @@ const isAccounts = location.pathname.includes('/accounts');
            !isCostDrivers && 
            !isResources && 
            !isDataQuality && 
+           !isOptimization && 
+           !isReports && (
            !isAccounts && (
              <Overview 
                 data={rawData} 
@@ -219,5 +242,4 @@ const isAccounts = location.pathname.includes('/accounts');
     </div>
   );
 };
-
 export default DashboardPage;
