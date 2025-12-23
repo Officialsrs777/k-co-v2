@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, Activity, ArrowRight, MoreHorizontal, CheckCircle2, X, FileText, Zap, Target } from 'lucide-react';
+import { Clock, Activity, ArrowRight, Layers, CheckCircle2, X, FileText, Zap, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Features = () => {
@@ -57,7 +57,7 @@ const Features = () => {
         <div className="mb-16 text-center max-w-3xl mx-auto">
           <motion.div variants={itemVariants}>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#8B2FC9]/10 text-[#8B2FC9] text-xs font-bold uppercase mb-3 border border-[#8B2FC9]/20">
-                <MoreHorizontal size={14} /> Service Models
+                <Layers size={14} /> Service Models
             </div>
           </motion.div>
           

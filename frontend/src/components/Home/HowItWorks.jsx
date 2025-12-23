@@ -7,7 +7,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const HowItWorks = () => {
+const HowItWorks = ({ activateCTA = () => {} }) => {
   const [activeTab, setActiveTab] = useState(1);
   const navigate = useNavigate();
 
@@ -19,8 +19,15 @@ const HowItWorks = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const handleGetStarted = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleTryItForFree = (e) => {
+    e.preventDefault();
+    if (activateCTA) {
+      activateCTA();
+    }
+    const heroSection = document.getElementById('hero');
+    if (heroSection) {
+      heroSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   // --- ANIMATION VARIANTS ---
@@ -308,18 +315,13 @@ const HowItWorks = () => {
           className="text-center"
         >
           <motion.button 
-            whileHover={{ scale: 1.05 }}
+            onClick={handleTryItForFree}
+            whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(160, 47, 241, 0.5)" }}
             whileTap={{ scale: 0.95 }}
-            onClick={handleGetStarted}
-            className="group relative px-10 py-4 bg-white text-black rounded-xl text-lg font-bold shadow-[0_0_40px_rgba(255,255,255,0.3)] overflow-hidden"
+            className="px-10 py-4 bg-[#a02ff1] hover:bg-[#8a25d4] text-white font-bold rounded-xl transition-all shadow-lg shadow-purple-900/30 flex items-center gap-2 mx-auto"
           >
-            {/* Shimmer Effect */}
-            <div className="absolute top-0 -left-[100%] w-full h-full bg-gradient-to-r from-transparent via-white/50 to-transparent group-hover:animate-shimmer" />
-            
-            <div className="relative flex items-center gap-3">
-              Get Started for Free 
-              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-            </div>
+            <span>Try it for free</span>
+            <ArrowRight size={20} />
           </motion.button>
           
           <p className="text-gray-500 text-sm mt-4">

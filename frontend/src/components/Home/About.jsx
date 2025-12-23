@@ -51,19 +51,23 @@ const About = () => {
           className="text-center max-w-4xl mx-auto mb-20"
         >
           <motion.span variants={fadeInUp} className="text-[#8B2FC9] text-xs font-bold uppercase tracking-[0.2em] mb-4 block">
-            Who We Are
+            WHO WE ARE
           </motion.span>
           
           <motion.h2 variants={fadeInUp} className="text-4xl md:text-5xl font-bold text-white mb-8 tracking-tight">
-            Your Strategic <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B2FC9] to-purple-400">FinOps Partner</span>
+            FinOps Built for <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8B2FC9] to-purple-400">Engineering-Led Teams</span>
           </motion.h2>
           
           <motion.p variants={fadeInUp} className="text-gray-400 text-lg leading-relaxed mb-6">
-            We are <span className="text-white font-semibold">K&Co.</span> — a team of ex-cloud engineers and financial analysts. We don't just report on costs; we transform your infrastructure into a lean, profit-generating engine without slowing down innovation.
+            K&Co is a Cloud FinOps platform that helps engineering-led companies understand, control, and optimize their cloud spend — without slowing down development.
+          </motion.p>
+
+          <motion.p variants={fadeInUp} className="text-gray-400 text-lg leading-relaxed mb-6">
+            We turn complex AWS and GCP billing data into clear, actionable insights by combining a practical FinOps platform with hands-on expertise. Our focus is simple: help teams make better cloud cost decisions, faster.
           </motion.p>
 
           <motion.p variants={fadeInUp} className="text-gray-500 text-base font-light max-w-2xl mx-auto">
-            Serving B2B SaaS, data platforms, and AI companies who believe that every dollar saved on infrastructure is a dollar earned for innovation.
+            We work with startups and digital businesses where engineering, finance, and product teams need a shared view of cloud costs, unit economics, and efficiency.
           </motion.p>
         </motion.div>
 

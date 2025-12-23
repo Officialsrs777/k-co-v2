@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, ArrowRight, Mail } from 'lucide-react';
+import { CheckCircle2, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const InquirySection = () => {
@@ -73,24 +73,23 @@ const InquirySection = () => {
               transition={{ duration: 2, repeat: Infinity }}
               className="w-2 h-2 rounded-full bg-[#8B2FC9]"
             />
-            Accepting New Audits
+            Self-serve FinOps
           </div>
           
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
-            See your baseline & <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-[#8B2FC9]">Quick Wins.</span>
+            Start analyzing your <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-[#8B2FC9]">cloud spend today.</span>
           </h2>
           
           <p className="text-gray-400 text-lg mb-8 leading-relaxed">
-            Book a 3–4 week <strong>Cloud FinOps Audit</strong>. 
-            We deliver a focused 90-day plan so you can hit plan and expand margins.
+            Upload your cloud billing data to get instant visibility into costs, unit economics, and inefficiencies — without slowing down engineering teams.
           </p>
 
           <div className="space-y-4 mb-10">
             {[
-              "For VC-backed & mid-market B2B SaaS teams",
-              "Ideal for 20–500 FTE organizations",
-              "Secure-by-default (Read-only access)"
+              "Built for engineering-led teams",
+              "Self-serve platform with instant insights",
+              "Secure by default (read-only analysis)"
             ].map((text, index) => (
               <motion.div 
                 key={index}
@@ -102,24 +101,6 @@ const InquirySection = () => {
               </motion.div>
             ))}
           </div>
-
-          <motion.div 
-            variants={formItemVariants}
-            whileHover={{ x: 5 }}
-            className="p-6 bg-white/5 border border-white/10 rounded-2xl max-w-md hover:bg-white/[0.07] transition-colors"
-          >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-[#8B2FC9]/20 flex items-center justify-center text-[#8B2FC9]">
-                  <Mail size={20} />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide font-semibold">Direct Email</p>
-                  <a href="mailto:partnerships@kandco.com" className="text-white font-medium hover:text-[#8B2FC9] transition-colors">
-                    partnerships@kandco.com
-                  </a>
-                </div>
-              </div>
-          </motion.div>
         </motion.div>
 
         {/* RIGHT SIDE: The Form */}
@@ -148,9 +129,9 @@ const InquirySection = () => {
             <motion.div variants={formItemVariants} className="space-y-1.5">
               <label className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">I am interested in</label>
               <select className="w-full bg-[#0f0f11]/50 border border-white/10 rounded-lg p-2.5 text-sm text-white focus:border-[#8B2FC9] focus:outline-none transition-all focus:ring-2 focus:ring-[#8B2FC9]/20 cursor-pointer">
-                <option className="bg-[#0f0f11]">Cloud FinOps Audit (3-4 Weeks)</option>
-                <option className="bg-[#0f0f11]">Monthly Subscription Bundle</option>
-                <option className="bg-[#0f0f11]">Other Inquiry</option>
+                <option className="bg-[#0f0f11]">Platform Access</option>
+                <option className="bg-[#0f0f11]">Enterprise Features</option>
+                <option className="bg-[#0f0f11]">General Inquiry</option>
               </select>
             </motion.div>
 
@@ -166,7 +147,7 @@ const InquirySection = () => {
                 type="button" 
                 className="w-full py-3.5 bg-[#8B2FC9] hover:bg-[#7e22ce] text-white font-bold rounded-xl transition-all flex items-center justify-center gap-2 group shadow-[0_0_20px_rgba(139,47,201,0.3)] hover:shadow-[0_0_30px_rgba(139,47,201,0.5)] text-sm"
               >
-                Book Your Audit
+                Get Started
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </motion.button>
             </motion.div>
