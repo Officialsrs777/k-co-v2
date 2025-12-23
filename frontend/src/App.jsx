@@ -13,11 +13,16 @@ import InquirySection from './components/Home/InquirySection';
 import Footer from './components/Home/Footer';
 import HowItWorks from './components/Home/HowItWorks';
 
+// --- NEW IMPORT HERE ---
+import HowItWorks from './components/Home/HowItWorks';
+
+// Dashboard Components
 // Dashboard
 import Dashboard from './components/Dashboard/DashboardPage';
 import CSVUpload from './components/CSVUpload';
 
 import './index.css';
+import SlotBookingPage from './components/Home/SlotBookingPage';
 
 const Home = () => {
   const [showJourneySection, setShowJourneySection] = useState(false);
@@ -77,6 +82,16 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
+
+        {/* --- ADD THIS ROUTE TO FIX THE BLANK PAGE --- */}
+        <Route path="/how-it-works" element={<HowItWorks />} />
+
+        
+        {/* Dashboard Route */}
+        <Route path="/dashboard/*" element={<Dashboard />} />
+        <Route path="/verify-email/:email" element={<VerifyEmailPage />} />
+        <Route path='/book-slot' element={<SlotBookingPage />} />
+
         
         {/* Auth routes REMOVED because AuthModal handles them on the Home page */}
 
