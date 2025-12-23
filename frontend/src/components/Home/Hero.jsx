@@ -13,14 +13,15 @@ import {
   FileSpreadsheet,
   Lock
 } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "react-router-dom";
 import AuthModal from "../Auth/AuthModal";
 
-const Hero = ({ onOpenAuth }) => {
+const Hero = ({ onOpenAuth, isCTAActivated = false, showAttentionGrabber = false, deactivateCTA = () => {}, showJourney = () => {} }) => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [counter, setCounter] = useState(0);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [showOnboardingHint, setShowOnboardingHint] = useState(false);
 
   // Handle 3D Parallax Effect
   const handleMouseMove = (e) => {
@@ -36,6 +37,33 @@ const Hero = ({ onOpenAuth }) => {
     }, 20);
     return () => clearInterval(interval);
   }, []);
+
+  // Delayed onboarding hint (7-9 seconds, using 8 seconds)
+  useEffect(() => {
+    const hintTimer = setTimeout(() => {
+      setShowOnboardingHint(true);
+    }, 8000);
+
+    return () => clearTimeout(hintTimer);
+  }, []);
+
+  // Hide hint on significant scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 200) {
+        setShowOnboardingHint(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Hide hint when primary CTA is clicked
+  const handleCTAClick = () => {
+    setShowOnboardingHint(false);
+    deactivateCTA();
+  };
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -58,6 +86,7 @@ const Hero = ({ onOpenAuth }) => {
     <>
     <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} initialView="signup" />
     <section
+      id="hero"
       onMouseMove={handleMouseMove}
       className="relative min-h-screen flex items-center justify-center bg-[#0f0f11] overflow-hidden pt-24 pb-12"
     >
@@ -147,6 +176,187 @@ const Hero = ({ onOpenAuth }) => {
                 </div>
               </motion.button>
 
+          <motion.div variants={itemVariants} className="flex flex-col w-full">
+            <div className="flex justify-start w-full relative">
+              <AnimatePresence>
+                {showAttentionGrabber && (
+                  <>
+                    {/* Multiple expanding border rings - 3 cycles over 4.5 seconds */}
+                    {[0, 1, 2].map((cycle) => (
+                      <motion.div
+                        key={cycle}
+                        className="absolute -inset-4 rounded-3xl border-2 border-[#a02ff1] pointer-events-none"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{
+                          opacity: [0, 0.8, 0],
+                          scale: [0.9, 1.1, 1.3],
+                        }}
+                        exit={{ opacity: 0 }}
+                        transition={{
+                          duration: 1.5,
+                          delay: cycle * 1.5,
+                          ease: "easeOut"
+                        }}
+                      />
+                    ))}
+                  </>
+                )}
+              </AnimatePresence>
+              <Link 
+                to="/sign-up" 
+                className="inline-block"
+                onClick={handleCTAClick}
+              >
+                <motion.button
+                  whileHover={{ 
+                    scale: 1.05, 
+                    boxShadow: "0 0 40px rgba(160, 47, 241, 0.6)",
+                    y: -2
+                  }}
+                  whileTap={{ scale: 0.98 }}
+                  animate={isCTAActivated ? {
+                    boxShadow: [
+                      "0 0 20px rgba(160, 47, 241, 0.4), inset 0 0 20px rgba(160, 47, 241, 0.1)",
+                      "0 0 50px rgba(160, 47, 241, 0.8), inset 0 0 40px rgba(160, 47, 241, 0.3)",
+                      "0 0 20px rgba(160, 47, 241, 0.4), inset 0 0 20px rgba(160, 47, 241, 0.1)"
+                    ]
+                  } : {}}
+                  transition={isCTAActivated ? {
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut"
+                  } : {}}
+                  className="relative px-10 py-5 text-xl rounded-2xl font-bold text-white overflow-hidden bg-gradient-to-r from-[#a02ff1] via-[#8a25d4] to-[#a02ff1] transition-all shadow-lg tracking-tight"
+                  style={{
+                    backgroundSize: isCTAActivated ? '200% 100%' : '100% 100%',
+                    backgroundPosition: isCTAActivated ? '0% 50%' : '50% 50%'
+                  }}
+                >
+                  {/* Animated gradient background */}
+                  <motion.div
+                    className="absolute inset-0"
+                    animate={isCTAActivated ? {
+                      background: [
+                        'linear-gradient(90deg, #a02ff1 0%, #c06eff 50%, #a02ff1 100%)',
+                        'linear-gradient(90deg, #8a25d4 0%, #a02ff1 50%, #8a25d4 100%)',
+                        'linear-gradient(90deg, #a02ff1 0%, #c06eff 50%, #a02ff1 100%)'
+                      ]
+                    } : {}}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "linear"
+                    }}
+                  />
+                  
+                  {/* Futuristic grid overlay */}
+                  <div className="absolute inset-0 opacity-10" style={{
+                    backgroundImage: 'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+                    backgroundSize: '20px 20px'
+                  }} />
+                  
+                  {/* Shimmer shine effect on text */}
+                  {isCTAActivated && (
+                    <motion.div
+                      className="absolute inset-0 pointer-events-none"
+                      style={{
+                        background: 'linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)',
+                        backgroundSize: '200% 100%'
+                      }}
+                      animate={{
+                        backgroundPosition: ['-200% 0', '200% 0']
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "linear",
+                        repeatDelay: 0.5
+                      }}
+                    />
+                  )}
+                  
+                  <div className="relative z-10 flex items-center justify-center gap-3">
+                    <motion.span 
+                      className="tracking-tight relative inline-block text-white"
+                      style={{
+                        textShadow: isCTAActivated 
+                          ? '0 0 10px rgba(255,255,255,0.8), 0 0 20px rgba(160,47,241,0.6), 0 0 30px rgba(160,47,241,0.4)'
+                          : 'none',
+                        filter: isCTAActivated ? 'brightness(1.2)' : 'none'
+                      }}
+                      animate={isCTAActivated ? {
+                        scale: [1, 1.04, 1],
+                        textShadow: [
+                          '0 0 10px rgba(255,255,255,0.8), 0 0 20px rgba(160,47,241,0.6), 0 0 30px rgba(160,47,241,0.4)',
+                          '0 0 20px rgba(255,255,255,1), 0 0 30px rgba(160,47,241,0.8), 0 0 40px rgba(160,47,241,0.6)',
+                          '0 0 10px rgba(255,255,255,0.8), 0 0 20px rgba(160,47,241,0.6), 0 0 30px rgba(160,47,241,0.4)'
+                        ]
+                      } : {}}
+                      transition={isCTAActivated ? {
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      } : {}}
+                    >
+                      Get Started
+                    </motion.span>
+                    <motion.div
+                      animate={isCTAActivated ? {
+                        x: [0, 6, 0],
+                        scale: [1, 1.2, 1],
+                        filter: [
+                          'drop-shadow(0 0 0px rgba(255,255,255,0))',
+                          'drop-shadow(0 0 10px rgba(255,255,255,0.9)) drop-shadow(0 0 15px rgba(160,47,241,0.7))',
+                          'drop-shadow(0 0 0px rgba(255,255,255,0))'
+                        ]
+                      } : {
+                        type: "spring",
+                        stiffness: 400
+                      }}
+                      transition={isCTAActivated ? {
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      } : {
+                        type: "spring",
+                        stiffness: 400
+                      }}
+                    >
+                      <ArrowRight size={24} strokeWidth={2.5} />
+                    </motion.div>
+                  </div>
+                </motion.button>
+              </Link>
+            </div>
+            
+            {/* Onboarding Hint - Attractive tagline, positioned below button */}
+            <AnimatePresence>
+              {showOnboardingHint && (
+                <motion.div
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 5 }}
+                  transition={{ duration: 0.5, ease: "easeOut" }}
+                  className="mt-6 flex items-center justify-start"
+                >
+                  <p className="text-sm text-gray-400 flex items-center gap-2 group">
+                    <span className="relative">
+                      New here?
+                      <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-[#a02ff1] group-hover:w-full transition-all duration-300"></span>
+                    </span>
+                    <span className="text-[#a02ff1] font-medium flex items-center gap-1.5">
+                      See how K&Co works
+                      <motion.span
+                        animate={{ x: [0, 4, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        →
+                      </motion.span>
+                    </span>
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </motion.div>
 
@@ -252,7 +462,7 @@ const Hero = ({ onOpenAuth }) => {
             </div>
           </div>
         </motion.div>
-
+    </motion.div>
       </div>
     </section>
   </>);

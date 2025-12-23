@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Components
 import Navbar from './components/Home/Navbar';
@@ -18,21 +19,58 @@ import CSVUpload from './components/CSVUpload';
 
 import './index.css';
 
-const Home = () => (
-  <div className="min-h-screen bg-[#0f0f11] font-sans overflow-x-hidden">
-    <Navbar /> 
-    <main>
-      <Hero />    
-      <About />
-      <FinOpsSection />
-      <Features />
-      <Pricing />
-      <HowItWorks />
-      <InquirySection />
-    </main>
-    <Footer />
-  </div>
-);
+const Home = () => {
+  const [showJourneySection, setShowJourneySection] = useState(false);
+  const [isCTAActivated, setIsCTAActivated] = useState(false);
+  const [showAttentionGrabber, setShowAttentionGrabber] = useState(false);
+
+  const showJourney = () => {
+    setShowJourneySection(true);
+  };
+
+  const activateCTA = () => {
+    setIsCTAActivated(true);
+    setShowAttentionGrabber(true);
+    setTimeout(() => setShowAttentionGrabber(false), 4500); // Show for 4.5 seconds (3 cycles)
+  };
+
+  const deactivateCTA = () => {
+    setIsCTAActivated(false);
+    setShowAttentionGrabber(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0f0f11] font-sans overflow-x-hidden">
+      <Navbar showJourney={showJourney} /> 
+      <main>
+        <Hero 
+          isCTAActivated={isCTAActivated} 
+          deactivateCTA={deactivateCTA} 
+          showAttentionGrabber={showAttentionGrabber}
+          showJourney={showJourney}
+        />    
+        <About />
+        <FinOpsSection />
+        <Features />
+        <Pricing />
+        <AnimatePresence>
+          {showJourneySection && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+            >
+              <HowItWorks activateCTA={activateCTA} />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <InquirySection />
+      </main>
+      <Footer />
+    </div>
+  );
+};
 
 function App() {
   return (
