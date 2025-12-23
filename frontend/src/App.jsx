@@ -11,18 +11,15 @@ import Features from './components/Home/Features';
 import Pricing from './components/Home/Pricing';
 import InquirySection from './components/Home/InquirySection';
 import Footer from './components/Home/Footer';
+import HowItWorks from './components/Home/HowItWorks';
 
 // --- NEW IMPORT HERE ---
 import HowItWorks from './components/Home/HowItWorks';
 
 // Dashboard Components
+// Dashboard
 import Dashboard from './components/Dashboard/DashboardPage';
 import CSVUpload from './components/CSVUpload';
-
-// Auth Pages
-import SignInPage from './components/Auth/SignInPage';
-import SignUpPage from './components/Auth/SignUpPage';
-import VerifyEmailPage from './components/Auth/VerifyEmailPage';
 
 import './index.css';
 import SlotBookingPage from './components/Home/SlotBookingPage';
@@ -84,27 +81,24 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Home Route */}
         <Route path="/" element={<Home />} />
 
         {/* --- ADD THIS ROUTE TO FIX THE BLANK PAGE --- */}
         <Route path="/how-it-works" element={<HowItWorks />} />
 
-        {/* Auth Routes */}
-        <Route path="/sign-in/*" element={<SignInPage />} />
-        <Route path="/sign-up/*" element={<SignUpPage />} />
-
+        
         {/* Dashboard Route */}
         <Route path="/dashboard/*" element={<Dashboard />} />
-
-        <Route path="/upload" element={<CSVUpload />} />
         <Route path="/verify-email/:email" element={<VerifyEmailPage />} />
-        
         <Route path='/book-slot' element={<SlotBookingPage />} />
 
-        {/* Catch-all Route (Optional but recommended) */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        
+        {/* Auth routes REMOVED because AuthModal handles them on the Home page */}
 
+        <Route path="/upload" element={<CSVUpload />} />
+        <Route path="/dashboard/*" element={<Dashboard />} />
+        
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
