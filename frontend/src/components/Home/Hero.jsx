@@ -63,6 +63,7 @@ const Hero = ({ onOpenAuth, isCTAActivated = false, showAttentionGrabber = false
   const handleCTAClick = () => {
     setShowOnboardingHint(false);
     deactivateCTA();
+    setIsAuthOpen(true);
   };
 
   const containerVariants = {
@@ -152,30 +153,6 @@ const Hero = ({ onOpenAuth, isCTAActivated = false, showAttentionGrabber = false
           </motion.div>
 
           {/* Buttons with ANIMATION */}
-          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center gap-4">
-          <motion.button
-                // --- THIS IS THE ANIMATION PART ---
-                onClick={() => setIsAuthOpen(true)}
-                animte={{ 
-                  boxShadow: ["0 0 0px rgba(160, 47, 241, 0)", "0 0 30px rgba(160, 47, 241, 0.5)", "0 0 0px rgba(160, 47, 241, 0)"],
-                  scale: [1, 1.02, 1]
-                }}
-                transition={{ 
-                  duration: 2, 
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-                // ----------------------------------
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="w-full relative px-8 py-4 rounded-xl font-bold text-white overflow-hidden bg-[#a02ff1] transition-all"
-              >
-                <div className="flex items-center justify-center gap-2">
-                  <span>Get Started</span>
-                  <ArrowRight size={18} />
-                </div>
-              </motion.button>
-
           <motion.div variants={itemVariants} className="flex flex-col w-full">
             <div className="flex justify-start w-full relative">
               <AnimatePresence>
@@ -202,8 +179,7 @@ const Hero = ({ onOpenAuth, isCTAActivated = false, showAttentionGrabber = false
                   </>
                 )}
               </AnimatePresence>
-              <Link 
-                to="/sign-up" 
+              <div 
                 className="inline-block"
                 onClick={handleCTAClick}
               >
@@ -326,7 +302,7 @@ const Hero = ({ onOpenAuth, isCTAActivated = false, showAttentionGrabber = false
                     </motion.div>
                   </div>
                 </motion.button>
-              </Link>
+              </div>
             </div>
             
             {/* Onboarding Hint - Attractive tagline, positioned below button */}
@@ -462,10 +438,10 @@ const Hero = ({ onOpenAuth, isCTAActivated = false, showAttentionGrabber = false
             </div>
           </div>
         </motion.div>
-    </motion.div>
       </div>
     </section>
-  </>);
+    </>
+  );
 };
 
 export default Hero;
