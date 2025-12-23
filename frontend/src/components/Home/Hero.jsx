@@ -15,10 +15,12 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import AuthModal from "../Auth/AuthModal";
 
 const Hero = ({ onOpenAuth }) => {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [counter, setCounter] = useState(0);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   // Handle 3D Parallax Effect
   const handleMouseMove = (e) => {
@@ -53,6 +55,8 @@ const Hero = ({ onOpenAuth }) => {
   };
 
   return (
+    <>
+    <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} initialView="signup" />
     <section
       onMouseMove={handleMouseMove}
       className="relative min-h-screen flex items-center justify-center bg-[#0f0f11] overflow-hidden pt-24 pb-12"
@@ -120,11 +124,10 @@ const Hero = ({ onOpenAuth }) => {
 
           {/* Buttons with ANIMATION */}
           <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center gap-4">
-            
-            <Link to="/sign-up" className="w-full sm:w-auto">
-              <motion.button
+          <motion.button
                 // --- THIS IS THE ANIMATION PART ---
-                animate={{ 
+                onClick={() => setIsAuthOpen(true)}
+                animte={{ 
                   boxShadow: ["0 0 0px rgba(160, 47, 241, 0)", "0 0 30px rgba(160, 47, 241, 0.5)", "0 0 0px rgba(160, 47, 241, 0)"],
                   scale: [1, 1.02, 1]
                 }}
@@ -143,7 +146,6 @@ const Hero = ({ onOpenAuth }) => {
                   <ArrowRight size={18} />
                 </div>
               </motion.button>
-            </Link>
 
           </motion.div>
         </motion.div>
@@ -253,7 +255,7 @@ const Hero = ({ onOpenAuth }) => {
 
       </div>
     </section>
-  );
+  </>);
 };
 
 export default Hero;
