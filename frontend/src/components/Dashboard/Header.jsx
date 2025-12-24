@@ -144,15 +144,7 @@ const Header = ({ title, anomalies = [], anomaliesCount = 0 }) => {
           )}
         </div>
         
-        {/* Divider */}
-        <div className="h-6 w-px bg-white/10"></div>
-        
-        {/* Actions Buttons */}
-        <div className="flex items-center gap-1">
-            <button className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-all">
-            <Download size={16} />
-            </button>
-        </div>
+    
 
         {/* User Profile */}
         <div className="pl-2 border-l border-white/10 ml-1 relative" ref={profileMenuRef}>
@@ -174,14 +166,18 @@ const Header = ({ title, anomalies = [], anomaliesCount = 0 }) => {
           </button>
 
           {/* Profile Dropdown Menu */}
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             {showProfileMenu && (
               <motion.div
                 initial={{ opacity: 0, y: -10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                className="absolute right-0 top-full mt-2 w-56 bg-[#1a1b20] border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden"
+                transition={{ 
+                  duration: 0.15, 
+                  ease: [0.4, 0, 0.2, 1],
+                  opacity: { duration: 0.1 }
+                }}
+                className="absolute right-0 top-full mt-2 w-56 bg-[#1a1b20] border border-white/10 rounded-lg shadow-2xl z-50 overflow-hidden will-change-transform"
               >
               {/* User Info */}
               <div className="p-3 border-b border-white/10">

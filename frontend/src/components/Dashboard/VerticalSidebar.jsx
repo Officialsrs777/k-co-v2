@@ -1,5 +1,5 @@
 // src/components/VerticalSidebar.jsx
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import {
   BarChart3,
@@ -339,32 +339,108 @@ const VerticalSidebar = ({ onCsvSelected }) => {
   // 3. Hover Tooltip State
   const [hoveredItem, setHoveredItem] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
+  const hoverTimeoutRef = useRef(null);
+  const tooltipRef = useRef(null);
+  const isHoveringTooltipRef = useRef(false);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Update tooltip position using requestAnimationFrame for smooth updates
+  const updateTooltipPosition = (element) => {
+    if (!element) return;
+    
+    requestAnimationFrame(() => {
+      const rect = element.getBoundingClientRect();
+      const sidebarWidth = window.innerWidth >= 1024 ? 240 : 72;
+      const tooltipWidth = 320;
+      const tooltipHeight = 200; // Approximate height
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      
+      // Calculate initial position
+      let top = rect.top + rect.height / 2;
+      let left = sidebarWidth + 12;
+      
+      // Keep tooltip within viewport vertically
+      if (top - tooltipHeight / 2 < 0) {
+        top = tooltipHeight / 2 + 10;
+      } else if (top + tooltipHeight / 2 > viewportHeight) {
+        top = viewportHeight - tooltipHeight / 2 - 10;
+      }
+      
+      // Keep tooltip within viewport horizontally
+      if (left + tooltipWidth > viewportWidth) {
+        left = viewportWidth - tooltipWidth - 20;
+      }
+      
+      setTooltipPosition({
+        top,
+        left,
+      });
+    });
+  };
 
   // 4. Helper for Nav Items with Tooltip
   const NavItem = ({ item }) => {
     const handleMouseEnter = (e) => {
       if (item.description) {
-        const rect = e.currentTarget.getBoundingClientRect();
-        // Check if sidebar is collapsed (width < 200px)
-        const sidebarWidth = window.innerWidth >= 1024 ? 240 : 72;
-        setTooltipPosition({
-          top: rect.top + rect.height / 2,
-          left: sidebarWidth + 12,
-        });
+        // Clear any existing timeout
+        if (hoverTimeoutRef.current) {
+          clearTimeout(hoverTimeoutRef.current);
+          hoverTimeoutRef.current = null;
+        }
+        
+        // Immediate show for better UX
+        updateTooltipPosition(e.currentTarget);
         setHoveredItem(item);
       }
     };
 
-    const handleMouseLeave = () => {
-      setHoveredItem(null);
+    const handleMouseMove = (e) => {
+      // Update position smoothly while hovering
+      if (hoveredItem === item && item.description) {
+        updateTooltipPosition(e.currentTarget);
+      }
+    };
+
+    const handleMouseLeave = (e) => {
+      // Clear timeout if mouse leaves before delay completes
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = null;
+      }
+      
+      // Check if mouse is moving to tooltip
+      const relatedTarget = e.relatedTarget;
+      if (relatedTarget && tooltipRef.current?.contains(relatedTarget)) {
+        // Mouse is moving to tooltip, keep it visible
+        isHoveringTooltipRef.current = true;
+        return;
+      }
+      
+      // Small delay to allow moving to tooltip (user-friendly)
+      isHoveringTooltipRef.current = false;
+      hoverTimeoutRef.current = setTimeout(() => {
+        if (!isHoveringTooltipRef.current) {
+          setHoveredItem(null);
+        }
+      }, 200);
     };
 
     return (
-      <div className="relative">
+      <div className="relative" data-nav-item={item.to}>
         <NavLink
           to={item.to}
           end={item.end}
           onMouseEnter={handleMouseEnter}
+          onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           className={({ isActive }) => `
             group flex items-center justify-center lg:justify-start gap-0 lg:gap-3 px-2 lg:px-3 py-2.5 lg:py-2 mb-1 rounded-lg transition-all duration-200 border border-transparent
@@ -388,53 +464,85 @@ const VerticalSidebar = ({ onCsvSelected }) => {
   return (
     <>
       {/* Hover Preview Window */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {hoveredItem && (
           <motion.div
-            initial={{ opacity: 0, x: -10, scale: 0.95 }}
+            key={hoveredItem.to}
+            ref={tooltipRef}
+            initial={{ opacity: 0, x: -15, scale: 0.96 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: -10, scale: 0.95 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="fixed z-[60] pointer-events-none"
+            exit={{ opacity: 0, x: -15, scale: 0.96 }}
+            transition={{ 
+              duration: 0.25, 
+              ease: [0.16, 1, 0.3, 1],
+              opacity: { duration: 0.2 }
+            }}
+            className="fixed z-[60] will-change-transform pointer-events-auto"
             style={{
               top: `${tooltipPosition.top}px`,
               left: `${tooltipPosition.left}px`,
               transform: "translateY(-50%)",
             }}
+            onMouseEnter={() => {
+              // Keep tooltip visible if mouse enters it
+              isHoveringTooltipRef.current = true;
+              if (hoverTimeoutRef.current) {
+                clearTimeout(hoverTimeoutRef.current);
+                hoverTimeoutRef.current = null;
+              }
+            }}
+            onMouseLeave={() => {
+              // Hide tooltip when mouse leaves
+              isHoveringTooltipRef.current = false;
+              if (hoverTimeoutRef.current) {
+                clearTimeout(hoverTimeoutRef.current);
+              }
+              hoverTimeoutRef.current = setTimeout(() => {
+                if (!isHoveringTooltipRef.current) {
+                  setHoveredItem(null);
+                }
+              }, 100);
+            }}
           >
-            <div className="bg-[#1a1b20] border border-[#a02ff1]/30 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl w-[320px]">
-              {/* Window Header */}
-              <div className="bg-[#25262b] border-b border-white/10 px-3 py-2 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-[#a02ff1]/10 rounded">
+            {/* Visual Bridge - Connects nav item to tooltip */}
+            <div 
+              className="absolute left-0 top-1/2 -translate-x-full -translate-y-1/2 w-3 h-px bg-gradient-to-r from-[#a02ff1]/40 to-transparent"
+              style={{ left: '-12px' }}
+            />
+            
+            <div className="bg-[#1a1b20] border border-[#a02ff1]/40 rounded-xl shadow-2xl overflow-hidden backdrop-blur-xl w-[320px] pointer-events-auto ring-1 ring-[#a02ff1]/20">
+              {/* Window Header - Enhanced */}
+              <div className="bg-gradient-to-r from-[#25262b] to-[#1f2025] border-b border-[#a02ff1]/20 px-4 py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-1.5 bg-[#a02ff1]/20 rounded-lg ring-1 ring-[#a02ff1]/30">
                     <hoveredItem.icon size={14} className="text-[#a02ff1]" />
                   </div>
-                  <h3 className="text-xs font-bold text-white">
+                  <h3 className="text-xs font-bold text-white tracking-tight">
                     {hoveredItem.label}
                   </h3>
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full bg-white/20"></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-white/20"></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-white/20"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#a02ff1]/30"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-white/10"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-white/10"></div>
                 </div>
               </div>
               
-              {/* Preview Content Window */}
-              <div className="p-3 bg-[#0f0f11]">
+              {/* Preview Content Window - Enhanced */}
+              <div className="p-4 bg-[#0f0f11]">
                 <PreviewContent item={hoveredItem} />
               </div>
               
-              {/* Window Footer */}
-              <div className="bg-[#25262b] border-t border-white/10 px-3 py-1.5">
-                <p className="text-[9px] text-gray-500 text-center">
+              {/* Window Footer - Enhanced */}
+              <div className="bg-gradient-to-r from-[#25262b] to-[#1f2025] border-t border-[#a02ff1]/20 px-4 py-2">
+                <p className="text-[10px] text-gray-400 text-center leading-relaxed">
                   {hoveredItem.description}
                 </p>
               </div>
               
-              {/* Tooltip Arrow */}
-              <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2">
-                <div className="w-2 h-2 bg-[#1a1b20] border-l border-b border-[#a02ff1]/30 rotate-45"></div>
+              {/* Tooltip Arrow - Enhanced */}
+              <div className="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 pointer-events-none">
+                <div className="w-3 h-3 bg-[#1a1b20] border-l border-b border-[#a02ff1]/40 rotate-45 shadow-lg"></div>
               </div>
             </div>
           </motion.div>

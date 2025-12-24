@@ -65,17 +65,19 @@ const Overview = ({ data, filters = { provider: 'All', service: 'All', region: '
       .sort((a, b) => b.value - a.value)
       .slice(0, chartFilters.barChart.limit); 
 
-    // 5. Region Data for Pie Chart
+    // 5. Region Data - Get ALL regions (not limited) for MostPopularRegion component
     const regionMap = {};
     filtered.forEach(item => {
       const r = item.RegionName || 'Global';
       regionMap[r] = (regionMap[r] || 0) + (parseFloat(item.BilledCost) || 0);
     });
     const topRegion = Object.entries(regionMap).sort((a,b) => b[1] - a[1])[0];
-    const regionData = Object.entries(regionMap)
+    // All regions for MostPopularRegion component
+    const allRegionData = Object.entries(regionMap)
       .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value)
-      .slice(0, chartFilters.pieChart.limit); 
+      .sort((a, b) => b.value - a.value);
+    // Limited region data for other uses (if needed)
+    const regionData = allRegionData.slice(0, chartFilters.pieChart.limit); 
 
     // 6. KPIs
     // Spend Change
@@ -145,7 +147,7 @@ const Overview = ({ data, filters = { provider: 'All', service: 'All', region: '
     const topServicePercent = groupedData[0]?.value && totalSpend > 0 ? (groupedData[0].value / totalSpend) * 100 : 0;
 
     return { 
-      totalSpend, dailyData, groupedData, regionData,
+      totalSpend, dailyData, groupedData, regionData, allRegionData,
       topRegion: { name: topRegion?.[0], value: topRegion?.[1] },
       topService: groupedData[0], 
       filteredRecords: filtered,
@@ -201,11 +203,12 @@ const Overview = ({ data, filters = { provider: 'All', service: 'All', region: '
         />
       </div>
 
-      {/* Most Popular Region - Large Visualization */}
+      {/* Most Popular Region - Text-based display */}
       <div className="w-full">
         <MostPopularRegion 
-          data={processedData.regionData} 
+          data={processedData.allRegionData} 
           totalSpend={processedData.totalSpend}
+          billingPeriod={processedData.billingPeriod}
         />
       </div>
       

@@ -16,3 +16,64 @@ body {
   background-color: rgba(139, 47, 201, 0.3);
   color: white;
 }
+
+/* Performance Optimizations for Hover Effects */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Optimize hover transitions */
+[class*="hover:"] {
+  will-change: transform, opacity, background-color, color;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Smooth tooltip animations */
+[data-tooltip],
+.tooltip,
+[class*="tooltip"] {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+/* Prevent layout shifts during hover */
+.motion-div,
+[class*="motion"] {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Enhanced tooltip styling for sidebar */
+.sidebar-tooltip {
+  animation: tooltipFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-15px) translateY(-50%) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(-50%) scale(1);
+  }
+}
+
+/* Smooth hover bridge effect */
+.tooltip-bridge {
+  animation: bridgeFadeIn 0.3s ease-out forwards;
+}
+
+@keyframes bridgeFadeIn {
+  from {
+    opacity: 0;
+    width: 0;
+  }
+  to {
+    opacity: 1;
+    width: 12px;
+  }
+}

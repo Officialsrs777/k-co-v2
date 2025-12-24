@@ -4,24 +4,17 @@ import {
   Box, X, Copy, Layers, 
   CreditCard, Download, Filter,
   TrendingUp, TrendingDown, Zap, AlertTriangle, Activity,
-  Trash2, Mail, CheckCircle2, ChevronRight, LayoutGrid, List,
-  DollarSign, Ghost, ShieldAlert, BarChart2
+  Trash2, CheckCircle2, ChevronRight, LayoutGrid, List,
+  DollarSign, Ghost, ShieldAlert
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  ResponsiveContainer, AreaChart, Area, 
-  ComposedChart, Line, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, CartesianGrid, Legend 
+  ResponsiveContainer, AreaChart, Area
 } from 'recharts';
 
 // --- UTILS ---
 const formatCurrency = (val) => 
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(val);
-
-const formatDateShort = (dateStr) => {
-    if (!dateStr) return '';
-    const date = new Date(dateStr);
-    return `${date.getMonth() + 1}/${date.getDate()}`;
-};
 
 const Sparkline = ({ data, color = '#a02ff1' }) => {
   if (!data || data.length < 2) return <div className="h-8 w-24 bg-white/5 rounded opacity-20" />;
@@ -35,29 +28,6 @@ const Sparkline = ({ data, color = '#a02ff1' }) => {
       </ResponsiveContainer>
     </div>
   );
-};
-
-// --- CUSTOM TOOLTIP FOR PERFECT GRAPH ---
-const CustomChartTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-[#1a1b20] border border-white/10 p-3 rounded-xl shadow-2xl z-50">
-          <p className="text-gray-400 text-xs font-bold mb-2 border-b border-white/10 pb-1">{label}</p>
-          <div className="flex flex-col gap-1">
-              {payload.map((p, index) => (
-                  <div key={index} className="flex items-center gap-2 text-xs">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.color }} />
-                      <span className="text-gray-300 w-16">{p.name}:</span>
-                      <span className="font-mono font-bold text-white">
-                          {p.name === 'Cost' ? formatCurrency(p.value) : p.value.toLocaleString()}
-                      </span>
-                  </div>
-              ))}
-          </div>
-        </div>
-      );
-    }
-    return null;
 };
 
 // --- COMPONENT: INTERACTIVE KPI CARD ---
@@ -201,6 +171,7 @@ const ResourceInventory = ({ data }) => {
   const [grouping, setGrouping] = useState('none');
   const [selectedResource, setSelectedResource] = useState(null); 
   const [currentPage, setCurrentPage] = useState(1);
+  const [flaggedResources, setFlaggedResources] = useState(new Set());
   const itemsPerPage = 50;
 
   const { inventory, groups, stats } = useMemo(() => {
@@ -311,6 +282,81 @@ const ResourceInventory = ({ data }) => {
     return <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${styles[status] || styles.Active}`}>{status}</span>;
   };
 
+  // --- HANDLE FLAG RESOURCE ---
+  const handleFlagResource = (resourceId) => {
+    setFlaggedResources(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(resourceId)) {
+        newSet.delete(resourceId);
+      } else {
+        newSet.add(resourceId);
+      }
+      return newSet;
+    });
+    // Close the side panel after flagging
+    setSelectedResource(null);
+  };
+
+  // --- HANDLE CSV EXPORT ---
+  const handleExport = () => {
+    const headers = [
+      'Resource ID',
+      'Resource Name',
+      'Service',
+      'Region',
+      'Account',
+      'Status',
+      'Total Cost',
+      'Tags',
+      'Flagged Status',
+      'Governance Note'
+    ];
+
+    const rows = inventory.map(resource => {
+      const isFlagged = flaggedResources.has(resource.id);
+      const tagsStr = Object.entries(resource.tags).map(([k, v]) => `${k}:${v}`).join('; ') || 'None';
+      
+      let governanceNote = '';
+      if (isFlagged) {
+        governanceNote = 'Resource flagged for review - requires attention';
+      } else if (resource.status === 'Zombie') {
+        governanceNote = 'Potential zombie asset - zero usage, high cost';
+      } else if (!resource.hasTags) {
+        governanceNote = 'Missing required tags - governance risk';
+      } else if (resource.status === 'Spiking') {
+        governanceNote = 'Cost spiking - requires investigation';
+      }
+
+      return [
+        resource.id,
+        resource.name || resource.id,
+        resource.service,
+        resource.region,
+        resource.account,
+        resource.status,
+        resource.totalCost.toFixed(2),
+        tagsStr,
+        isFlagged ? 'Flagged' : 'Not Flagged',
+        governanceNote || 'No issues identified'
+      ];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `resource-inventory-${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="p-6 space-y-6 min-h-screen bg-[#0f0f11] text-white font-sans animate-in fade-in duration-500 relative">
       
@@ -320,7 +366,12 @@ const ResourceInventory = ({ data }) => {
             <h1 className="text-2xl font-bold flex items-center gap-2"><Box className="text-[#a02ff1]" /> Asset Manager</h1>
             <p className="text-gray-400 text-sm mt-1">Full inventory visibility and waste detection.</p>
          </div>
-         <button className="px-4 py-2 bg-[#1a1b20] border border-white/10 rounded-xl hover:bg-white/5 transition-colors text-gray-400 hover:text-white flex gap-2 items-center text-sm font-bold"><Download size={16}/> Export CSV</button>
+         <button 
+            onClick={handleExport}
+            className="px-4 py-2 bg-[#1a1b20] border border-white/10 rounded-xl hover:bg-white/5 transition-colors text-gray-400 hover:text-white flex gap-2 items-center text-sm font-bold"
+         >
+            <Download size={16}/> Export CSV
+         </button>
       </div>
 
       {/* 2. INTERACTIVE KPIs */}
@@ -369,15 +420,29 @@ const ResourceInventory = ({ data }) => {
                             </tr>
                          </thead>
                          <tbody className="divide-y divide-white/5">
-                            {filteredData.slice(0, 100).map(item => (
-                               <tr key={item.id} onClick={() => setSelectedResource(item)} className="hover:bg-white/5 cursor-pointer group transition-colors">
-                                  <td className="px-6 py-3 font-mono text-gray-300 group-hover:text-[#a02ff1] transition-colors truncate max-w-[300px]">{item.id}</td>
+                            {filteredData.slice(0, 100).map(item => {
+                              const isFlagged = flaggedResources.has(item.id);
+                              return (
+                               <tr 
+                                  key={item.id} 
+                                  onClick={() => setSelectedResource(item)} 
+                                  className={`hover:bg-white/5 cursor-pointer group transition-colors ${
+                                     isFlagged ? 'bg-orange-500/5 border-l-2 border-orange-500/50' : ''
+                                  }`}
+                               >
+                                  <td className="px-6 py-3 font-mono text-gray-300 group-hover:text-[#a02ff1] transition-colors truncate max-w-[300px]">
+                                     <div className="flex items-center gap-2">
+                                        {item.id}
+                                        {isFlagged && <AlertTriangle size={12} className="text-orange-400" />}
+                                     </div>
+                                  </td>
                                   <td className="px-6 py-3 text-gray-500">{item.service} • {item.region}</td>
                                   <td className="px-6 py-3"><StatusBadge status={item.status} /></td>
                                   <td className="px-6 py-3"><Sparkline data={item.trend} color={item.status === 'Spiking' ? '#ef4444' : '#a02ff1'} /></td>
                                   <td className="px-6 py-3 text-right font-bold text-white font-mono">{formatCurrency(item.totalCost)}</td>
                                </tr>
-                            ))}
+                              );
+                            })}
                          </tbody>
                       </table>
                   ) : (
@@ -434,30 +499,6 @@ const ResourceInventory = ({ data }) => {
                   {/* Body */}
                   <div className="flex-1 overflow-y-auto p-6 space-y-6">
                      
-                     {/* PERFECT COST VS USAGE CHART */}
-                     <div className="h-56 w-full bg-black/20 rounded-xl border border-white/5 p-4 flex flex-col">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xs font-bold text-gray-400 uppercase flex items-center gap-2"><BarChart2 size={12}/> Cost vs Usage</h3>
-                            <div className="flex gap-3 text-[10px]">
-                                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#a02ff1]"></div><span className="text-gray-400">Cost ($)</span></div>
-                                <div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full bg-[#3b82f6]"></div><span className="text-gray-400">Usage (Units)</span></div>
-                            </div>
-                        </div>
-                        <div className="flex-1 min-h-0">
-                            <ResponsiveContainer width="100%" height="100%">
-                                <ComposedChart data={selectedResource.history} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                                    <XAxis dataKey="date" tickFormatter={formatDateShort} stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
-                                    <YAxis yAxisId="left" orientation="left" stroke="#a02ff1" fontSize={10} tickFormatter={(v) => `$${v}`} tickLine={false} axisLine={false} width={35} />
-                                    <YAxis yAxisId="right" orientation="right" stroke="#3b82f6" fontSize={10} tickLine={false} axisLine={false} width={30} />
-                                    <RechartsTooltip content={<CustomChartTooltip />} />
-                                    <Bar yAxisId="right" dataKey="usage" name="Usage" fill="#3b82f6" opacity={0.3} barSize={10} radius={[2, 2, 0, 0]} />
-                                    <Line yAxisId="left" type="monotone" dataKey="cost" name="Cost" stroke="#a02ff1" strokeWidth={2} dot={{ r: 2, fill: '#a02ff1' }} activeDot={{ r: 4 }} />
-                                </ComposedChart>
-                            </ResponsiveContainer>
-                        </div>
-                     </div>
-
                      <div className="grid grid-cols-2 gap-4">
                         <div className="bg-black/20 p-4 rounded-xl border border-white/5">
                            <p className="text-xs text-gray-500 uppercase font-bold mb-1">Total Cost</p>
@@ -513,14 +554,31 @@ const ResourceInventory = ({ data }) => {
                         </div>
                      </div>
 
-                     {/* Actions */}
-                     <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/10">
-                        <button className="flex items-center justify-center gap-2 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-gray-300 transition-colors">
-                           <Mail size={14}/> Contact Owner
+                     {/* Resource Actions */}
+                     <div className="mt-4 pt-4 border-t border-white/10">
+                        <button 
+                           onClick={() => handleFlagResource(selectedResource.id)}
+                           className={`w-full flex items-center justify-center gap-2 py-3 rounded-lg text-xs font-bold transition-colors ${
+                              flaggedResources.has(selectedResource.id)
+                                 ? 'bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400'
+                                 : 'bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 text-orange-400'
+                           }`}
+                        >
+                           {flaggedResources.has(selectedResource.id) ? (
+                              <>
+                                 <CheckCircle2 size={14}/> Flagged for Review
+                              </>
+                           ) : (
+                              <>
+                                 <AlertTriangle size={14}/> Flag for Review
+                              </>
+                           )}
                         </button>
-                        <button className="flex items-center justify-center gap-2 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-xs font-bold text-red-400 transition-colors">
-                           <Trash2 size={14}/> Mark for Cleanup
-                        </button>
+                        {flaggedResources.has(selectedResource.id) && (
+                           <p className="text-[10px] text-gray-500 mt-2 text-center">
+                              This resource is flagged and will be included in the export
+                           </p>
+                        )}
                      </div>
                   </div>
                </motion.div>
