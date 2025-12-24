@@ -5,8 +5,6 @@ import {
   rejectInquiry,
   getSlotsByDate,
 } from './inquiry.controller.js';
-import { getFreeSlots } from '../../utils/calender.js';
-
 const router = express.Router();
 
 /**

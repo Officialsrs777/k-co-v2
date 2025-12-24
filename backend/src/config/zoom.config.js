@@ -1,14 +1,9 @@
 import axios from "axios";
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 const ZOOM_ACCOUNT_ID = process.env.ZOOM_ACCOUNT_ID;
 const ZOOM_CLIENT_ID = process.env.ZOOM_CLIENT_ID;
 const ZOOM_CLIENT_SECRET = process.env.ZOOM_CLIENT_SECRET;
 
-console.log("Zoom Client ID:", ZOOM_CLIENT_ID);
-console.log("Zoom Client Secret:", ZOOM_CLIENT_SECRET);
 
 export async function getZoomAccessToken() {
   const auth = Buffer.from(

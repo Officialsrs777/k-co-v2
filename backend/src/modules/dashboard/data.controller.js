@@ -3,7 +3,6 @@ import csv from "csv-parser";
 import { processRecords } from "../../utils/processRecords.js";
 
 export const processCSV = (req, res) => {
-  console.log("Received file upload request...");
 
   if (!req.file) {
     console.error("No file received");
@@ -22,16 +21,12 @@ export const processCSV = (req, res) => {
     .on("data", (data) => results.push(data))
     .on("end", () => {
       try {
-        console.log(`Parsed ${results.length} rows. Processing analytics...`);
-
         if (results.length === 0) {
           throw new Error("CSV file appeared empty or could not be parsed.");
         }
 
         // Process data
         const analytics = processRecords(results);
-
-        console.log("Analytics generated successfully.");
 
         // Return JSON
         res.json({

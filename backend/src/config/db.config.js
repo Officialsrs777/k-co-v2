@@ -6,7 +6,6 @@ dotenv.config();
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'postgres',
   protocol: 'postgres',
-  logging: console.log, // logs all SQL queries
   dialectOptions: {
     ssl: {
       require: true,

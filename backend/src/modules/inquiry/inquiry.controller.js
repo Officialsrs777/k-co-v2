@@ -7,7 +7,7 @@ import {
 import { generateJWT, verifyJWT } from "../../utils/jwt.js";
 import { Inquiry } from "../../models/index.js";
 import { createInquiry } from "./inquiry.service.js";
-import { scheduleEvent  , getFreeSlots} from "../../utils/calender.js";
+import { scheduleEvent  , getFreeSlots} from "../../utils/calenderSchedular.js";
 
 
 

@@ -1,5 +1,5 @@
-import { calendar, calendarId } from "../config/calender.js";
-import { createZoomMeeting } from "./zoom.js";
+import { calendar, calendarId } from "../config/calender.config.js";
+import { createZoomMeeting } from "./zoomMeeting.js";
 
 
 export async function scheduleEvent(
@@ -69,10 +69,6 @@ export async function scheduleEvent(
     return { success: false, message: error.message };
   }
 }
-
-
-
-
 
 export async function getFreeSlots(
   fromISO,

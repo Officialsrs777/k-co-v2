@@ -1,5 +1,5 @@
 import axios from "axios";
-import { getZoomAccessToken } from "../config/zoom.js";
+import { getZoomAccessToken } from "../config/zoom.config.js";
 
 export async function createZoomMeeting(
   topic,

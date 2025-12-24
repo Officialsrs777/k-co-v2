@@ -142,7 +142,7 @@ export const signIn = async (req, res) => {
     const token = generateJWT(payload);
 
     /* 6. Set cookie */
-    res.cookie("token", token, {
+    res.cookie("kandco_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
@@ -167,7 +167,6 @@ export const signIn = async (req, res) => {
 
 export const getUser = async (req, res) => {
   try {
-    console.log(req.user);
 
     const user = await userService.getUserById(req.user.id);
     if (!user) return res.status(404).json({ error: "User not found" });
@@ -219,7 +218,7 @@ export const updateProfile = async (req, res) => {
 };
 
 export const logout = (req, res) => {
-  res.clearCookie("token", {
+  res.clearCookie("kandco_token", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "strict",

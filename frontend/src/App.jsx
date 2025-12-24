@@ -12,7 +12,6 @@ import Pricing from './components/Home/Pricing';
 import InquirySection from './components/Home/InquirySection';
 import Footer from './components/Home/Footer';
 import HowItWorks from './components/Home/HowItWorks';
-
 // --- NEW IMPORT HERE ---
 
 
@@ -97,7 +96,6 @@ function App() {
 
         <Route path="/upload" element={<CSVUpload />} />
         <Route path="/dashboard/*" element={<Dashboard />} />
-        
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
