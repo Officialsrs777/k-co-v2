@@ -36,6 +36,8 @@ const DashboardPage = () => {
   // --- 1. DATA LOADING ---
   useEffect(() => {
     const storedRaw = localStorage.getItem('rawRecords');
+    const storedMetadata = localStorage.getItem('csvMetadata');
+    
     if (storedRaw) {
       try {
         const parsed = JSON.parse(storedRaw);
@@ -53,6 +55,19 @@ const DashboardPage = () => {
           // Reset filters when new data is loaded
           setFilters({ provider: 'All', service: 'All', region: 'All' });
           setLoading(false);
+          
+          // Log metadata if available
+          if (storedMetadata) {
+            try {
+              const metadata = JSON.parse(storedMetadata);
+              console.log(`Loaded ${cleanData.length} sample rows (Total: ${metadata.totalRows || cleanData.length} rows)`);
+              if (metadata.columnMapping) {
+                console.log('Column mapping detected:', metadata.columnMapping);
+              }
+            } catch (e) {
+              // Ignore metadata parse errors
+            }
+          }
         } else {
           console.warn("Data found but empty");
           navigate('/upload');

@@ -31,17 +31,25 @@ const CSVUpload = () => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const { data, rawRecords } = response.data; // Expecting backend to return both
+      const { data, rawRecords, columnMapping, totalRows, sampleSize } = response.data;
 
       // 3. Store Data for Dashboard
       // 'finopsData' = Calculated Metrics (Total Spend, Graphs)
       localStorage.setItem('finopsData', JSON.stringify(data));
       
-      // 'rawRecords' = The full list of rows (For the Detailed Table)
-      // If backend doesn't send rawRecords, we might need to parse client-side or update backend
+      // 'rawRecords' = Sample rows for frontend preview (first 5000 rows)
+      // For large files, only sample is sent to frontend
       if (rawRecords) {
         localStorage.setItem('rawRecords', JSON.stringify(rawRecords));
       }
+      
+      // Store metadata about the upload
+      localStorage.setItem('csvMetadata', JSON.stringify({
+        columnMapping: columnMapping,
+        totalRows: totalRows || rawRecords?.length || 0,
+        sampleSize: sampleSize || rawRecords?.length || 0,
+        uploadedAt: new Date().toISOString()
+      }));
 
       // 4. Show Success
       // Small delay to let the user see the "100%" animation

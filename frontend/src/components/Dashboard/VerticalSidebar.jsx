@@ -1,6 +1,7 @@
 // src/components/VerticalSidebar.jsx
 import React, { useRef, useState, useEffect } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import axios from "axios";
 import {
   BarChart3,
   TrendingUp,
@@ -13,34 +14,121 @@ import {
   Upload as UploadIcon,
   Play,
   FileBarChart,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const VerticalSidebar = ({ onCsvSelected }) => {
   const fileInputRef = useRef(null);
+  const navigate = useNavigate();
   const [selectedFileName, setSelectedFileName] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [uploadCount, setUploadCount] = useState(0);
+  const MAX_UPLOADS = 2;
+
+  // Check upload count on mount
+  useEffect(() => {
+    const count = parseInt(localStorage.getItem('csvUploadCount') || '0', 10);
+    setUploadCount(count);
+  }, []);
 
   // 1. Handle File Selection Logic
   const openFilePicker = () => {
+    // Check upload limit
+    if (uploadCount >= MAX_UPLOADS) {
+      setUploadError(`Maximum ${MAX_UPLOADS} uploads allowed. Please refresh the page to reset.`);
+      return;
+    }
     fileInputRef.current?.click();
   };
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check upload limit
+      if (uploadCount >= MAX_UPLOADS) {
+        setUploadError(`Maximum ${MAX_UPLOADS} uploads allowed. Please refresh the page to reset.`);
+        setSelectedFile(null);
+        setSelectedFileName("");
+        return;
+      }
+      
       setSelectedFileName(file.name);
       setSelectedFile(file);
+      setUploadError("");
       if (onCsvSelected) onCsvSelected(file);
     }
   };
 
-  // Handle Process Upload - Frontend only (refresh dashboard)
-  const handleProcessUpload = () => {
-    if (selectedFile) {
-      // For now, just refresh the page (frontend only)
-      // In the future, this will call the backend
+  // Handle Process Upload - Actually upload to backend
+  const handleProcessUpload = async () => {
+    if (!selectedFile) return;
+    
+    // Check upload limit
+    if (uploadCount >= MAX_UPLOADS) {
+      setUploadError(`Maximum ${MAX_UPLOADS} uploads allowed. Please refresh the page to reset.`);
+      return;
+    }
+
+    setUploading(true);
+    setUploadError("");
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      // Send to Backend
+      const response = await axios.post('http://localhost:5000/api/process-csv', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      const { data, rawRecords, columnMapping, totalRows, sampleSize } = response.data;
+
+      // Store Data for Dashboard
+      localStorage.setItem('finopsData', JSON.stringify(data));
+      
+      if (rawRecords) {
+        localStorage.setItem('rawRecords', JSON.stringify(rawRecords));
+      }
+      
+      // Store metadata
+      localStorage.setItem('csvMetadata', JSON.stringify({
+        columnMapping: columnMapping,
+        totalRows: totalRows || rawRecords?.length || 0,
+        sampleSize: sampleSize || rawRecords?.length || 0,
+        uploadedAt: new Date().toISOString()
+      }));
+
+      // Increment upload count
+      const newCount = uploadCount + 1;
+      localStorage.setItem('csvUploadCount', newCount.toString());
+      setUploadCount(newCount);
+
+      // Reset file selection
+      setSelectedFile(null);
+      setSelectedFileName("");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+
+      // Reload dashboard to show new data
       window.location.reload();
+      
+    } catch (error) {
+      console.error("Upload failed:", error);
+      setUploading(false);
+      
+      if (error.response) {
+        const serverError = error.response.data?.error || error.response.data?.details || 'Server error occurred';
+        setUploadError(`Upload failed: ${serverError}`);
+      } else if (error.request) {
+        setUploadError("Cannot connect to backend server. Please ensure the backend is running on port 5000.");
+      } else {
+        setUploadError(`Upload failed: ${error.message}`);
+      }
     }
   };
 
@@ -599,16 +687,24 @@ const VerticalSidebar = ({ onCsvSelected }) => {
         {/* Upload Widget - Collapsed on small screens */}
         <div
           onClick={openFilePicker}
-          className="group relative border border-dashed border-gray-700 hover:border-[#a02ff1] rounded-lg p-2 lg:p-3 cursor-pointer bg-[#1a1b20]/50 hover:bg-[#a02ff1]/5 transition-all"
+          className={`group relative border border-dashed rounded-lg p-2 lg:p-3 transition-all ${
+            uploadCount >= MAX_UPLOADS
+              ? "border-red-500/50 bg-red-500/5 cursor-not-allowed opacity-60"
+              : "border-gray-700 hover:border-[#a02ff1] bg-[#1a1b20]/50 hover:bg-[#a02ff1]/5 cursor-pointer"
+          }`}
         >
           <div className="flex flex-col items-center gap-1">
-            <div className="flex items-center justify-center gap-0 lg:gap-2 text-gray-400 group-hover:text-[#a02ff1] transition-colors">
+            <div className={`flex items-center justify-center gap-0 lg:gap-2 transition-colors ${
+              uploadCount >= MAX_UPLOADS ? "text-red-400" : "text-gray-400 group-hover:text-[#a02ff1]"
+            }`}>
               <UploadIcon size={18} className="lg:w-3.5 lg:h-3.5" />
               <span className="hidden lg:inline text-xs font-semibold text-white">
-                Upload more data (CSV)
+                Upload CSV ({uploadCount}/{MAX_UPLOADS})
               </span>
             </div>
-            <p className="hidden lg:block text-[10px] text-gray-500/80">One-time upload</p>
+            <p className="hidden lg:block text-[10px] text-gray-500/80">
+              {uploadCount >= MAX_UPLOADS ? "Limit reached" : "Max 2 uploads"}
+            </p>
           </div>
           {selectedFileName && (
             <p className="hidden lg:block text-[10px] text-gray-400 truncate px-1 mt-2 font-medium">
@@ -617,23 +713,46 @@ const VerticalSidebar = ({ onCsvSelected }) => {
           )}
         </div>
 
+        {/* Error Message */}
+        {uploadError && (
+          <div className="flex items-start gap-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+            <AlertCircle size={14} className="text-red-400 mt-0.5 flex-shrink-0" />
+            <p className="text-[10px] text-red-400 leading-relaxed">{uploadError}</p>
+          </div>
+        )}
+
         {/* Process Upload Button - Icon only on small screens */}
         <button
           type="button"
           onClick={handleProcessUpload}
-          disabled={!selectedFile}
+          disabled={!selectedFile || uploading || uploadCount >= MAX_UPLOADS}
           className={`
                 w-full flex items-center justify-center gap-0 lg:gap-2 py-2.5 rounded-lg font-bold text-xs transition-all
                 ${
-                  selectedFile
+                  selectedFile && !uploading && uploadCount < MAX_UPLOADS
                     ? "bg-[#a02ff1] hover:bg-[#8e25d9] text-white shadow-[0_0_15px_rgba(160,47,241,0.3)]"
                     : "bg-gray-800 text-gray-600 cursor-not-allowed"
                 }
             `}
-          title={selectedFile ? "Process Upload" : "Select a file first"}
+          title={
+            uploadCount >= MAX_UPLOADS 
+              ? `Maximum ${MAX_UPLOADS} uploads reached` 
+              : selectedFile 
+                ? "Process Upload" 
+                : "Select a file first"
+          }
         >
-          <Play size={18} className="lg:w-3.5 lg:h-3.5" fill={selectedFile ? "currentColor" : "none"} />
-          <span className="hidden lg:inline">Process Upload</span>
+          {uploading ? (
+            <>
+              <Loader2 size={18} className="lg:w-3.5 lg:h-3.5 animate-spin" />
+              <span className="hidden lg:inline">Processing...</span>
+            </>
+          ) : (
+            <>
+              <Play size={18} className="lg:w-3.5 lg:h-3.5" fill={selectedFile && uploadCount < MAX_UPLOADS ? "currentColor" : "none"} />
+              <span className="hidden lg:inline">Process Upload</span>
+            </>
+          )}
         </button>
       </div>
     </div>

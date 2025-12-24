@@ -1,4 +1,23 @@
+import { detectColumns, normalizeRow } from './columnMapper.js';
+
 export const processRecords = (records) => {
+  if (!records || records.length === 0) {
+    return {
+      totalSpend: '0.00',
+      leakageCost: '0.00',
+      efficiencyScore: 100,
+      timelineGraph: [],
+      productEarnings: [],
+      leakageItems: [],
+      recordCount: 0,
+      rawRecords: [],
+      columnMapping: null
+    };
+  }
+
+  // Detect column mapping from first row
+  const columnMapping = detectColumns(records[0]);
+  
   let totalSpend = 0;
   let leakageCost = 0;
   const timelineMap = {};
@@ -8,9 +27,12 @@ export const processRecords = (records) => {
 
   records.forEach((row, index) => {
     try {
+      // Normalize row to have consistent field names
+      const normalizedRow = normalizeRow(row, columnMapping);
+      
       // 1. Safe Parse Cost (Handle currency symbols or commas if present)
-      // Check both 'BilledCost' and 'Cost' (common variations)
-      let rawCost = row.BilledCost || row.Cost || '0';
+      // Use normalized BilledCost field (which maps to any cost column)
+      let rawCost = normalizedRow.BilledCost || normalizedRow.Cost || '0';
       if (typeof rawCost === 'string') {
         rawCost = rawCost.replace(/[$,]/g, '');
       }
@@ -20,19 +42,20 @@ export const processRecords = (records) => {
       totalSpend += cost;
 
       // 3. Leakage Logic (If CommitmentDiscountStatus is missing/uncovered)
-      // Safely check properties existence
-      const discountStatus = row.CommitmentDiscountStatus || '';
+      const discountStatus = normalizedRow.CommitmentDiscountStatus || '';
       const isOptimized = discountStatus.toLowerCase().includes('used') || 
-                          discountStatus.toLowerCase().includes('covered');
+                          discountStatus.toLowerCase().includes('covered') ||
+                          discountStatus.toLowerCase().includes('reserved') ||
+                          discountStatus.toLowerCase().includes('savings');
       
       if (!isOptimized && cost > 0.0001) { 
         leakageCost += cost;
         
         if (leakageItems.length < 100) {
            leakageItems.push({
-             name: row.ResourceName || row.ResourceId || row.ServiceName || 'Unknown Resource',
-             service: row.ServiceName || 'Unknown Service',
-             region: row.RegionName || 'Global',
+             name: normalizedRow.ResourceName || normalizedRow.ResourceId || normalizedRow.ServiceName || 'Unknown Resource',
+             service: normalizedRow.ServiceName || 'Unknown Service',
+             region: normalizedRow.RegionName || 'Global',
              cost: cost,
              CommitmentDiscountStatus: 'Uncovered'
            });
@@ -40,19 +63,21 @@ export const processRecords = (records) => {
       }
 
       // 4. Timeline (Daily Spend) - Safe Date Parsing
-      const dateStr = row.BillingPeriodStart || row.UsageStartDate || row.Date;
+      const dateStr = normalizedRow.BillingPeriodStart || normalizedRow.UsageStartDate || normalizedRow.Date;
       if (dateStr) {
         // Take the YYYY-MM-DD part safely
-        const date = dateStr.split(' ')[0]; 
-        timelineMap[date] = (timelineMap[date] || 0) + cost;
+        const date = String(dateStr).split(' ')[0].split('T')[0]; 
+        if (date && date.match(/^\d{4}-\d{2}-\d{2}/)) {
+          timelineMap[date] = (timelineMap[date] || 0) + cost;
+        }
       }
 
       // 5. Service Breakdown
-      const service = row.ServiceName || row.Product || 'Other';
+      const service = normalizedRow.ServiceName || normalizedRow.Product || 'Other';
       serviceMap[service] = (serviceMap[service] || 0) + cost;
       
       // 6. Region Breakdown
-      const region = row.RegionName || row.Region || 'Global';
+      const region = normalizedRow.RegionName || normalizedRow.Region || 'Global';
       regionMap[region] = (regionMap[region] || 0) + cost;
 
     } catch (err) {
@@ -79,6 +104,9 @@ export const processRecords = (records) => {
     ? Math.round(((totalSpend - leakageCost) / totalSpend) * 100) 
     : 100;
 
+  // Normalize all raw records before returning
+  const normalizedRecords = records.slice(0, 1000).map(row => normalizeRow(row, columnMapping));
+
   return {
     totalSpend: totalSpend.toFixed(2),
     leakageCost: leakageCost.toFixed(2),
@@ -87,6 +115,7 @@ export const processRecords = (records) => {
     productEarnings,
     leakageItems,
     recordCount: records.length,
-    rawRecords: records.slice(0, 1000) // Send first 1000 rows for the table to avoid payload limit
+    rawRecords: normalizedRecords, // Normalized records with consistent field names
+    columnMapping: columnMapping // Include mapping info for frontend reference
   };
 };
