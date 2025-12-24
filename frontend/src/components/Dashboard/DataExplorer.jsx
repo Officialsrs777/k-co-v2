@@ -3,8 +3,7 @@ import {
   Download, Search, Table as TableIcon, Filter, AlertCircle, 
   X, ChevronDown, ChevronUp, EyeOff, Check, Copy,
   ChevronLeft, ChevronRight, Layers, BarChart3, CheckSquare,
-  PieChart, Save, Bookmark, Trash2, TrendingUp, DollarSign, Activity,
-  FileSpreadsheet
+  PieChart, Save, Bookmark, Trash2, TrendingUp, DollarSign, Activity
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -415,10 +414,10 @@ const DataExplorer = ({ data }) => {
                  {/* EXPORT BUTTON (Restored) */}
                  <button 
                    onClick={downloadCSV}
-                   className="flex items-center gap-2 px-3 py-1.5 bg-[#a02ff1] hover:bg-[#8e25d9] text-white border border-[#a02ff1] rounded-lg text-xs font-bold transition-all shadow-lg shadow-purple-500/20"
+                   className="flex items-center gap-2 px-4 py-2 bg-[#a02ff1]/10 hover:bg-[#a02ff1]/20 border border-[#a02ff1]/30 rounded-lg text-xs font-bold text-[#a02ff1] transition-all whitespace-nowrap"
                  >
-                   <FileSpreadsheet size={14} /> 
-                   {selectedIndices.size > 0 ? 'Export Sel.' : 'Export'}
+                   <Download size={14} /> 
+                   {selectedIndices.size > 0 ? 'Export Selected CSV' : 'Export CSV'}
                  </button>
                </>
              )}

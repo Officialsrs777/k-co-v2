@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { 
   BarChart3, LineChart as LineChartIcon, Activity, 
   Layers, ChevronDown, DollarSign, ArrowUpRight, ArrowDownRight,
-  Maximize2, AlertCircle, Info, Download, Target, Calendar, X, Eye, EyeOff
+  Maximize2, AlertCircle, Info, Target, Calendar, X, Eye, EyeOff
 } from 'lucide-react';
 import { 
   BarChart, Bar, LineChart, Line, AreaChart, Area,
@@ -188,9 +188,6 @@ const CostAnalysis = ({ data }) => {
           <div className="p-2 bg-[#a02ff1]/10 rounded-lg text-[#a02ff1]"><Target size={22} /></div>
           Cost Analysis
         </h1>
-        <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-4 py-1.5 bg-[#a02ff1] hover:bg-[#8e25d9] rounded-lg text-xs font-bold transition-all shadow-lg"><Download size={14} /> Export</button>
-        </div>
       </header>
 
       {/* HORIZONTAL SUB-NAVIGATION */}

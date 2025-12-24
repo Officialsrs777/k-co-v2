@@ -368,9 +368,9 @@ const ResourceInventory = ({ data }) => {
          </div>
          <button 
             onClick={handleExport}
-            className="px-4 py-2 bg-[#1a1b20] border border-white/10 rounded-xl hover:bg-white/5 transition-colors text-gray-400 hover:text-white flex gap-2 items-center text-sm font-bold"
+            className="flex items-center gap-2 px-4 py-2 bg-[#a02ff1]/10 hover:bg-[#a02ff1]/20 border border-[#a02ff1]/30 rounded-lg text-xs font-bold text-[#a02ff1] transition-all whitespace-nowrap"
          >
-            <Download size={16}/> Export CSV
+            <Download size={14} /> Export CSV
          </button>
       </div>
 
