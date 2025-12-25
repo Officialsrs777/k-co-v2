@@ -28,7 +28,7 @@ const CSVUpload = () => {
 
     try {
       // 2. Send to Backend
-      const response = await axios.post('http://localhost:5000/api/process-csv', formData, {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/process-csv`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 

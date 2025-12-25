@@ -70,7 +70,7 @@ export default function SlotBookingPage() {
         ).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
 
         const res = await axios.get(
-          `http://localhost:5000/api/inquiry/slots/by-date?date=${formattedDate}`
+          `${import.meta.env.VITE_API_URL}/inquiry/slots/by-date?date=${formattedDate}`
         );
         setSlots(res.data.slots || []);
       } catch (err) {
