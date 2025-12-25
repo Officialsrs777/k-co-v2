@@ -1,43 +1,74 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import cors from 'cors';
+import cookieParser from 'cookie-parser';
+
+import sequelize from './config/db.config.js';
 import authRoutes from './modules/auth/auth.route.js';
 import dataRoutes from './modules/dashboard/data.route.js';
 import inquiryRoutes from './modules/inquiry/inquiry.route.js';
-import sequelize from './config/db.config.js';
-import cookieParser from 'cookie-parser';
-import cors from 'cors';
 
 dotenv.config();
 
-
 const app = express();
+
+/* =========================
+   Middleware
+========================= */
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"], // frontend (supports both ports)
-    credentials: true,               // allow cookies
+    origin: true,            // allow all origins for now (safe for backend deploy)
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
+
 app.use(express.json());
 app.use(cookieParser());
 
-// Routes
-app.use('/api/auth' , authRoutes);
-app.use('/api/' , dataRoutes ); // csv upload 
+/* =========================
+   Routes
+========================= */
+
+app.use('/api/auth', authRoutes);
+app.use('/api', dataRoutes);              // CSV upload & dashboard data
 app.use('/api/inquiry', inquiryRoutes);
 
+/* =========================
+   Health Check (IMPORTANT)
+========================= */
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK' });
+});
 
-// Start server after DB connection
-const PORT = process.env.PORT || 5000;
+/* =========================
+   Server Bootstrap
+========================= */
 
-sequelize.authenticate()
-  .then(() => {
+const PORT = process.env.PORT || 3000;
+
+async function startServer() {
+  try {
+    console.log('Starting server...');
+
+    // Verify DB connection
+    await sequelize.authenticate();
     console.log('Database connected successfully');
-    return sequelize.sync(); // optionally use { alter: true } in dev
-  })
-  .then(() => {
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  })
-  .catch(err => console.error('Database connection error:', err));
+
+    // Sync models (safe for now; remove or lock later)
+    await sequelize.sync();
+
+    // Start HTTP server
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+
+  } catch (error) {
+    console.error('Startup failed:', error);
+    process.exit(1); // REQUIRED for Render to show real error
+  }
+}
+
+startServer();
