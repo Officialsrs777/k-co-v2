@@ -4,7 +4,8 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 
 import sequelize from './config/db.config.js';
-import { transporter } from './config/nodemailer.config.js'; // 👈 ADD THIS
+// 👇 No SMTP transporter needed anymore
+// import { transporter } from './config/nodemailer.config.js';
 
 import authRoutes from './modules/auth/auth.route.js';
 import dataRoutes from './modules/dashboard/data.route.js';
@@ -59,14 +60,11 @@ async function startServer() {
     await sequelize.authenticate();
     console.log('✅ Database connected');
 
-    // 2️⃣ Verify SMTP (ONCE)
-    try {
-      await transporter.verify();
-      console.log('✅ SMTP server is ready');
-    } catch (smtpError) {
-      console.error('❌ SMTP verification failed:', smtpError.message);
-      throw smtpError; // fail startup if email is critical
+    // 2️⃣ Verify Mailgun API credentials (optional test)
+    if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN || !process.env.MAILGUN_FROM) {
+      throw new Error('Mailgun credentials are missing in .env');
     }
+    console.log('✅ Mailgun credentials are set');
 
     // 3️⃣ Sync DB models
     await sequelize.sync();
@@ -78,7 +76,7 @@ async function startServer() {
 
   } catch (error) {
     console.error('❌ Startup failed:', error);
-    process.exit(1); // IMPORTANT for Render
+    process.exit(1); // Important for deployment platforms like Render
   }
 }
 

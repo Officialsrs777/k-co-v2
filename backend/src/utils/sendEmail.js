@@ -1,13 +1,33 @@
-import { transporter } from "../config/nodemailer.config.js";
 
+import { mg } from "../config/mailgun.config.js";
+
+// Generic Mailgun send function
+const sendEmail = async ({ to, subject, html }) => {
+  const data = {
+    from: `"KandCo" <${process.env.MAILGUN_FROM}>`,
+    to,
+    subject,
+    html
+  };
+
+  return new Promise((resolve, reject) => {
+    mg.messages().send(data, (error, body) => {
+      if (error) {
+        console.error("Mailgun error:", error);
+        return reject(error);
+      }
+      resolve(body);
+    });
+  });
+};
+
+/* ================= VERIFICATION EMAIL ================= */
 export const sendVerificationEmail = async (email, full_name, otp) => {
   try {
-    await transporter.sendMail({
-      from: `"KandCo" <${process.env.SMTP_USER}>`,
+    await sendEmail({
       to: email,
       subject: "Verify your email",
-      html: 
-        `<!DOCTYPE html>
+      html: `<!DOCTYPE html>
 <html>
 <head>
     <style>
@@ -247,26 +267,20 @@ export const sendVerificationEmail = async (email, full_name, otp) => {
   }
 };
 
-export const sendInquiryAcknowledgementEmail = async (
-  email,
-  name,
-  preferred_datetime,
-  timezone
-) => {
+/* ================= INQUIRY ACKNOWLEDGEMENT ================= */
+export const sendInquiryAcknowledgementEmail = async (email, name, preferred_datetime, timezone) => {
   try {
     const meetingDate = new Date(preferred_datetime);
-
     const formattedDateTime = meetingDate.toLocaleString("en-US", {
       dateStyle: "medium",
       timeStyle: "short",
       timeZone: timezone,
     });
 
-    await transporter.sendMail({
-      from: `"KandCo" <${process.env.SMTP_USER}>`,
+    await sendEmail({
       to: email,
       subject: "We’ve Received Your Inquiry",
-      html: `
+      html:  `
         <!DOCTYPE html>
 <html>
 <head>
@@ -539,7 +553,7 @@ export const sendInquiryAcknowledgementEmail = async (
     </script>
 </body>
 </html>
-        `,
+        `
     });
 
     return { success: true };
@@ -549,26 +563,17 @@ export const sendInquiryAcknowledgementEmail = async (
   }
 };
 
-export const sendInquiryEmailToCompany = async (
-  name,
-  email,
-  message,
-  preferred_datetime,
-  timezone,
-  acceptLink,
-  rejectLink
-) => {
+/* ================= INQUIRY EMAIL TO COMPANY ================= */
+export const sendInquiryEmailToCompany = async (name, email, message, preferred_datetime, timezone, acceptLink, rejectLink) => {
   try {
     const meetingDate = new Date(preferred_datetime);
-
     const formattedDateTime = meetingDate.toLocaleString("en-US", {
       dateStyle: "medium",
       timeStyle: "short",
       timeZone: timezone,
     });
 
-    await transporter.sendMail({
-      from: `"KandCo" <${process.env.SMTP_USER}>`,
+    await sendEmail({
       to: process.env.COMPANY_EMAIL,
       subject: "New Inquiry Received – Action Required",
       html: `
@@ -947,7 +952,7 @@ export const sendInquiryEmailToCompany = async (
    
 </body>
 </html>
-      `,
+      `
     });
 
     return { success: true };
@@ -957,13 +962,8 @@ export const sendInquiryEmailToCompany = async (
   }
 };
 
-export const sendMeetingConfirmationEmail = async (
-  email,
-  name,
-  preferred_datetime,
-  timezone,
-  meetLink
-) => {
+/* ================= MEETING CONFIRMATION EMAIL ================= */
+export const sendMeetingConfirmationEmail = async (email, name, preferred_datetime, timezone, meetLink) => {
   try {
     const meetingDate = new Date(preferred_datetime);
     const formattedDateTime = meetingDate.toLocaleString("en-US", {
@@ -972,8 +972,7 @@ export const sendMeetingConfirmationEmail = async (
       timeZone: timezone,
     });
 
-    await transporter.sendMail({
-      from: `"KandCo" <${process.env.SMTP_USER}>`,
+    await sendEmail({
       to: email,
       subject: "Your Meeting is Scheduled",
       html: `
@@ -1385,26 +1384,23 @@ export const sendMeetingConfirmationEmail = async (
   
 </body>
 </html>
-      `,
+      `
     });
 
     return { success: true };
   } catch (error) {
     console.error("Meeting confirmation email error:", error);
-    return {
-      success: false,
-      message: "Failed to send meeting confirmation email",
-    };
+    return { success: false, message: "Failed to send meeting confirmation email" };
   }
 };
 
+/* ================= INQUIRY REJECTION EMAIL ================= */
 export const sendInquiryRejectionEmail = async (email, name) => {
   try {
-    await transporter.sendMail({
-      from: `"KandCo" <${process.env.SMTP_USER}>`,
+    await sendEmail({
       to: email,
       subject: "Your Inquiry Status",
-      html: `
+      html:  `
         <!DOCTYPE html>
 <html>
 <head>
@@ -1839,12 +1835,12 @@ export const sendInquiryRejectionEmail = async (email, name) => {
     </script>
 </body>
 </html>
-      `,
+      `
     });
 
     return { success: true };
   } catch (error) {
     console.error("Inquiry rejection email error:", error);
-    return { success: false, message: "Failed to send rejection email" };
+    return { success: false, message: "Failed to send inquiry rejection email" };
   }
 };
