@@ -1,6 +1,6 @@
 import { calendar, calendarId } from "../config/calender.config.js";
 import { createZoomMeeting } from "./zoomMeeting.js";
-
+import { DateTime } from "luxon";
 
 export async function scheduleEvent(
   summary,
@@ -78,7 +78,6 @@ export async function getFreeSlots(
   workStartHour = 10,
   workEndHour = 18
 ) {
-  // 1️⃣ Fetch busy slots
   const fb = await calendar.freebusy.query({
     requestBody: {
       timeMin: fromISO,
@@ -91,57 +90,65 @@ export async function getFreeSlots(
   const busy = fb.data.calendars?.[calendarId]?.busy || [];
   const freeSlots = [];
 
-  let current = new Date(fromISO);
-  const endRange = new Date(toISO);
+  let current = DateTime.fromISO(fromISO, { zone: timezone });
+  const endRange = DateTime.fromISO(toISO, { zone: timezone });
 
   while (current < endRange) {
-    const day = current.getDay(); // local day
-    const hour = current.getHours();
+    const day = current.weekday; // 1=Mon ... 7=Sun
+    const hour = current.hour;
 
     // Skip weekends
-    if (day === 0 || day === 6) {
-      current.setDate(current.getDate() + 1);
-      current.setHours(workStartHour, 0, 0, 0);
+    if (day === 6 || day === 7) {
+      current = current.plus({ days: 1 }).set({
+        hour: workStartHour,
+        minute: 0,
+        second: 0,
+      });
       continue;
     }
 
     // Enforce working hours
     if (hour < workStartHour) {
-      current.setHours(workStartHour, 0, 0, 0);
+      current = current.set({
+        hour: workStartHour,
+        minute: 0,
+        second: 0,
+      });
     }
 
     if (hour >= workEndHour) {
-      current.setDate(current.getDate() + 1);
-      current.setHours(workStartHour, 0, 0, 0);
+      current = current.plus({ days: 1 }).set({
+        hour: workStartHour,
+        minute: 0,
+        second: 0,
+      });
       continue;
     }
 
-    const slotStart = new Date(current);
-    const slotEnd = new Date(
-      slotStart.getTime() + slotMinutes * 60000
-    );
+    const slotStart = current;
+    const slotEnd = slotStart.plus({ minutes: slotMinutes });
 
-    // Slot spills past working hours
-    if (slotEnd.getHours() > workEndHour) {
-      current.setDate(current.getDate() + 1);
-      current.setHours(workStartHour, 0, 0, 0);
+    if (slotEnd.hour > workEndHour) {
+      current = current.plus({ days: 1 }).set({
+        hour: workStartHour,
+        minute: 0,
+        second: 0,
+      });
       continue;
     }
 
-    // Check overlap
     const isBusy = busy.some(b =>
-      new Date(b.start) < slotEnd &&
-      new Date(b.end) > slotStart
+      DateTime.fromISO(b.start) < slotEnd &&
+      DateTime.fromISO(b.end) > slotStart
     );
 
     if (!isBusy) {
       freeSlots.push({
-        start: slotStart.toISOString(),
-        end: slotEnd.toISOString(),
+        start: slotStart.toISO(),
+        end: slotEnd.toISO(),
       });
     }
 
-    // Move to next slot
     current = slotEnd;
   }
 
