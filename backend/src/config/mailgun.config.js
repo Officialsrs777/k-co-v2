@@ -1,7 +1,8 @@
-import mailgun from "mailgun-js";
+import Mailgun from "mailgun.js";
+import formData from "form-data";
 
-// Initialize Mailgun once
-export const mg = mailgun({
-  apiKey: process.env.MAILGUN_API_KEY,
-  domain: process.env.MAILGUN_DOMAIN
+const mailgun = new Mailgun(formData);
+export const mg = mailgun.client({
+  username: "api",
+  key: process.env.MAILGUN_API_KEY,
 });

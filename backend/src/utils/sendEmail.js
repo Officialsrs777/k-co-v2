@@ -2,24 +2,27 @@
 import { mg } from "../config/mailgun.config.js";
 
 // Generic Mailgun send function
-const sendEmail = async ({ to, subject, html }) => {
+export const sendEmail = async ({ to, subject, html }) => {
   const data = {
-    from: `"KandCo" <${process.env.MAILGUN_FROM}>`,
+    from: `KandCo <${process.env.MAILGUN_FROM}>`,
     to,
     subject,
-    html
+    html,
   };
 
-  return new Promise((resolve, reject) => {
-    mg.messages().send(data, (error, body) => {
-      if (error) {
-        console.error("Mailgun error:", error);
-        return reject(error);
-      }
-      resolve(body);
-    });
-  });
+  try {
+    const response = await mg.messages.create(
+      process.env.MAILGUN_DOMAIN, // e.g. mg.example.com
+      data
+    );
+
+    return response;
+  } catch (error) {
+    console.error("Mailgun error:", error);
+    throw error;
+  }
 };
+
 
 /* ================= VERIFICATION EMAIL ================= */
 export const sendVerificationEmail = async (email, full_name, otp) => {
