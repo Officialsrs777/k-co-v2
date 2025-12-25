@@ -6,16 +6,26 @@ dotenv.config();
 const sequelize = new Sequelize(process.env.DATABASE_URL, {
   dialect: 'postgres',
   protocol: 'postgres',
+  logging: false,
+
   dialectOptions: {
     ssl: {
       require: true,
-      rejectUnauthorized: false, // needed for Supabase
+      rejectUnauthorized: false,
     },
   },
+
+  pool: {
+    max: 5,
+    min: 0,
+    acquire: 30000,
+    idle: 10000,
+  },
+
   define: {
-    schema: 'public', // ensures tables are created in public schema
-    freezeTableName: false, // allows pluralization of table names
-    timestamps: false,      // disable default createdAt/updatedAt
+    schema: 'public',
+    freezeTableName: false,
+    timestamps: false,
   },
 });
 
