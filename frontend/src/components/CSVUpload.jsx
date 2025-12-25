@@ -28,7 +28,7 @@ const CSVUpload = () => {
 
     try {
       // 2. Send to Backend
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/process-csv`, formData, {
+      const response = await axios.post(`https://k-co-v2.onrender.com/api/process-csv`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
