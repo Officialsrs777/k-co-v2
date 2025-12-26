@@ -67,7 +67,7 @@ async function startServer() {
     console.log('✅ Mailgun credentials are set');
 
     // 3️⃣ Sync DB models
-    await sequelize.sync();
+    await sequelize.sync({ force: false, alter: false });
 
     // 4️⃣ Start HTTP server
     app.listen(PORT, () => {
